@@ -46,4 +46,5 @@ TEST = "value"
 ```
 
 Build it with `sandman build xclock`
+
 Run it with `sandman run xclock`
