@@ -1,10 +1,8 @@
 use structopt::StructOpt;
-use toml::value::Array;
-use toml::value::Table;
 use serde::Deserialize;
 use home;
 use std::io::{Write};
-use std::process::{Command, Stdio, Output};
+use std::process::{Command, Stdio, ExitStatus};
 
 /// Constants
 const SANDMAN_DIR: &str = "Sandman";
@@ -19,7 +17,6 @@ struct Args {
 /// Build related configuration of a container
 #[derive(Debug, Deserialize)]
 struct ContainerConfigBuild {
-    image_name: String,
     instructions: String,
 }
 
@@ -32,8 +29,9 @@ struct ContainerConfigRun {
     pulseaudio: bool,
     dbus: bool,
     net: bool,
-    volumes: Array,
-    devices: Array,
+    volumes: Vec<String>,
+    devices: Vec<String>,
+    env: Vec<String>,
 }
 
 /// The configuration of a container
@@ -41,7 +39,6 @@ struct ContainerConfigRun {
 struct ContainerConfig {
     build: ContainerConfigBuild,
     run: ContainerConfigRun,
-    env: Table,
 }
 
 /// A container is represented here
@@ -52,6 +49,7 @@ struct Container {
     config: ContainerConfig,
 }
 
+#[derive(Hash, Eq, PartialEq, Debug)]
 struct ToggleImplication {
     env: Vec<String>,
     volumes: Vec<String>,
@@ -59,6 +57,7 @@ struct ToggleImplication {
     args: Vec<String>,
 }
 
+#[derive(Hash, Eq, PartialEq, Debug)]
 struct Toggles {
     x11: ToggleImplication,
     dri: ToggleImplication,
@@ -68,8 +67,8 @@ struct Toggles {
     net: ToggleImplication,
 }
 
-impl ContainerConfigRun {
-    fn to_args(&self) -> Vec<String> {
+impl Container {
+    fn running_args(&self) -> Vec<String> {
         let toggles = get_toggles();
         let mut volumes: Vec<String> = vec![];
         let mut devices: Vec<String> = vec![];
@@ -77,8 +76,12 @@ impl ContainerConfigRun {
         let mut args: Vec<String> = vec![];
         let mut arguments: Vec<String> = vec![];
 
+        // TODO
+        // - Setup uid mapping
+
         // Default arguments
         arguments.extend(vec![
+            String::from("run"),
             String::from("--interactive"),
             String::from("--tty"),
             String::from("--rm"),
@@ -86,46 +89,46 @@ impl ContainerConfigRun {
 
         println!("Converting toggles into arguments");
 
-        if self.x11 {
+        if self.config.run.x11 {
             volumes.extend(toggles.x11.volumes);
             devices.extend(toggles.x11.devices);
             env.extend(toggles.x11.env);
             args.extend(toggles.x11.args);
         }
-        if self.dri {
+        if self.config.run.dri {
             volumes.extend(toggles.dri.volumes);
             devices.extend(toggles.dri.devices);
             env.extend(toggles.dri.env);
             args.extend(toggles.dri.args);
         }
-        if self.ipc {
+        if self.config.run.ipc {
             volumes.extend(toggles.ipc.volumes);
             devices.extend(toggles.ipc.devices);
             env.extend(toggles.ipc.env);
             args.extend(toggles.ipc.args);
         }
-        if self.pulseaudio {
+        if self.config.run.pulseaudio {
             volumes.extend(toggles.pulseaudio.volumes);
             devices.extend(toggles.pulseaudio.devices);
             env.extend(toggles.pulseaudio.env);
             args.extend(toggles.pulseaudio.args);
         }
-        if self.dbus {
+        if self.config.run.dbus {
             volumes.extend(toggles.dbus.volumes);
             devices.extend(toggles.dbus.devices);
             env.extend(toggles.dbus.env);
             args.extend(toggles.dbus.args);
         }
-        if self.net {
+        if self.config.run.net {
             volumes.extend(toggles.net.volumes);
             devices.extend(toggles.net.devices);
             env.extend(toggles.net.env);
             args.extend(toggles.net.args);
         }
 
-        //volumes.extend(self.volumes);
-        //env.extend(self.env);
-        //devices.extend(self.devices);
+        volumes.extend(self.config.run.volumes.clone());
+        env.extend(self.config.run.env.clone());
+        devices.extend(self.config.run.devices.clone());
 
         for volume in volumes.iter() {
             arguments.extend(vec![String::from("--volume"), String::from(volume)]);
@@ -140,7 +143,70 @@ impl ContainerConfigRun {
             arguments.push(String::from(arg));
         }
 
+        arguments.push(self.name.clone());
+
         arguments
+    }
+
+    /// Builds a given container
+    fn build(&self) -> Result<ExitStatus, ExitStatus> {
+        let image_name = self.name.clone();
+        let dockerfile = self.config.build.instructions.clone();
+        let build_arguments = vec!["bud", "-f", "-", "-t", &image_name];
+
+        //println!("Building {}", image_name);
+        //println!("Dockerfile Instructions:\n{}", dockerfile);
+
+        dbg!(&image_name);
+        dbg!(&dockerfile);
+        dbg!(&build_arguments);
+
+        // Set stdin with pipe because we need to pass the dockerfile using it
+        let mut buildah = Command::new("buildah")
+            .args(&build_arguments)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .spawn()
+            .unwrap();
+
+        // Pass the dockerfile instructions via stdin
+        let mut stdin = buildah.stdin.take().expect("Failed to open stdin");
+        std::thread::spawn(move || {
+            stdin.write_all(dockerfile.as_bytes()).expect("Failed to write to stdin")
+        });
+
+        let status = buildah.wait().expect("Failed to read stdout");
+
+        if status.success() {
+            return Ok(status);
+        }
+        else {
+            return Err(status);
+        }
+    }
+
+    /// Runs a given container
+    fn run(&self) -> Result<ExitStatus, ExitStatus> {
+        let args = self.running_args();
+        dbg!(&args);
+
+        let mut podman = Command::new("podman")
+            .args(&args)
+            .stdin(Stdio::inherit())
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .spawn()
+            .unwrap();
+
+        let status = podman.wait().expect("Failed to read stdout");
+
+        if status.success() {
+            return Ok(status);
+        }
+        else {
+            return Err(status);
+        }
     }
 }
 
@@ -207,61 +273,10 @@ fn get_container(container_name: &String) -> Container {
     let config: ContainerConfig = toml::from_str(&config_raw).unwrap();
 
     Container {
-        name: container_name.clone(),
+        name: format!("sandman/{}", container_name.clone()),
         file: config_filename,
         config: config,
     }
-}
-
-/// Builds a given container
-fn build_container(container: &Container) -> Result<Output, Output> {
-    let image_name = container.name.clone();
-    let dockerfile = container.config.build.instructions.clone();
-    let build_arguments = vec!["bud", "-f", "-", "-t", &image_name];
-
-    println!("Building {}", image_name);
-    println!("Dockerfile Instructions:\n{}", dockerfile);
-
-    dbg!(&image_name);
-    dbg!(&dockerfile);
-    dbg!(&build_arguments);
-
-    // Set std file descriptors with pipes because we need to work with them
-    let mut buildah = Command::new("buildah")
-        .args(&build_arguments)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
-
-    // Pass the dockerfile instructions via stdin
-    let mut stdin = buildah.stdin.take().expect("Failed to open stdin");
-    std::thread::spawn(move || {
-        stdin.write_all(dockerfile.as_bytes()).expect("Failed to write to stdin")
-    });
-
-    // Wait command to finish and capture result
-    let output = buildah.wait_with_output().expect("Failed to read stdout");
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    dbg!(&stdout);
-    dbg!(&stderr);
-
-    if output.status.success() {
-        return Ok(output);
-    }
-    else {
-        return Err(output);
-    }
-}
-
-/// Runs a given container
-fn run_container(container: &Container) -> Result<(), Output> {
-    println!("Running container...");
-    let args = container.config.run.to_args();
-    dbg!(args);
-    Ok(())
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -272,27 +287,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     dbg!(&container);
 
     if args.action == "run" {
-        match run_container(&container) {
-            Ok(output) => {
-                println!("Container spawned successfully");
+        match container.run() {
+            Err(status) => {
+                println!("Failed to run container. Exit status: {}", status);
             },
-            Err(output) => {
-                let stdout = String::from_utf8_lossy(&output.stdout);
-                let stderr = String::from_utf8_lossy(&output.stderr);
-                println!("Failed to run container: {} {}", stdout, stderr);
-            },
+            _ => {},
         }
     }
     else if args.action == "build" {
-        match build_container(&container) {
-            Ok(output) => {
-                println!("Image built successfully");
+        match container.build() {
+            Err(status) => {
+                println!("Failed to build container. Exit status: {}", status);
             },
-            Err(output) => {
-                let stdout = String::from_utf8_lossy(&output.stdout);
-                let stderr = String::from_utf8_lossy(&output.stderr);
-                println!("Failed to build image: {} {}", stdout, stderr);
-            },
+            _ => {},
         }
     }
     else {
