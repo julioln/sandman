@@ -14,11 +14,10 @@ Due to having a base image already built, the applications can run in ephemeral 
 
 `sandman <action> <container-name>` where action is `build` or `run`
 
-## Example configuration file
+## Example configuration file (aka Hello World)
 
 ```toml
 [build]
-image_name = 'sandman/xclock'
 instructions = '''
 FROM archlinux
 RUN pacman -Syu xorg-xclock --noconfirm
@@ -32,17 +31,19 @@ ipc = false
 pulseaudio = false
 dbus = false
 net = false
+uidmap = false
 volumes = []
 devices = []
+env = []
 
 # If you need data persistence
-# volumes = ['/home/julio/Containers/xclock:/root']
+# volumes = ['/home/whoami/Sandman/xclock:/root']
 
 # If you need to access a device
 # devices = ['/dev/sdd']
 
-[env]
-TEST = "value"
+# If you need special environment variables
+env = ['ENV=test']
 ```
 
 Build it with `sandman build xclock`
