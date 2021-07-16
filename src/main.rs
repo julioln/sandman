@@ -29,6 +29,7 @@ struct ContainerConfigRun {
     pulseaudio: bool,
     dbus: bool,
     net: bool,
+    uidmap: bool,
     volumes: Vec<String>,
     devices: Vec<String>,
     env: Vec<String>,
@@ -65,6 +66,7 @@ struct Toggles {
     pulseaudio: ToggleImplication,
     dbus: ToggleImplication,
     net: ToggleImplication,
+    uidmap: ToggleImplication,
 }
 
 impl Container {
@@ -76,9 +78,6 @@ impl Container {
         let mut args: Vec<String> = vec![];
         let mut arguments: Vec<String> = vec![];
 
-        // TODO
-        // - Setup uid mapping
-
         // Default arguments
         arguments.extend(vec![
             String::from("run"),
@@ -86,8 +85,6 @@ impl Container {
             String::from("--tty"),
             String::from("--rm"),
         ]);
-
-        println!("Converting toggles into arguments");
 
         if self.config.run.x11 {
             volumes.extend(toggles.x11.volumes);
@@ -125,6 +122,12 @@ impl Container {
             env.extend(toggles.net.env);
             args.extend(toggles.net.args);
         }
+        if self.config.run.uidmap {
+            volumes.extend(toggles.uidmap.volumes);
+            devices.extend(toggles.uidmap.devices);
+            env.extend(toggles.uidmap.env);
+            args.extend(toggles.uidmap.args);
+        }
 
         volumes.extend(self.config.run.volumes.clone());
         env.extend(self.config.run.env.clone());
@@ -153,13 +156,6 @@ impl Container {
         let image_name = self.name.clone();
         let dockerfile = self.config.build.instructions.clone();
         let build_arguments = vec!["bud", "-f", "-", "-t", &image_name];
-
-        //println!("Building {}", image_name);
-        //println!("Dockerfile Instructions:\n{}", dockerfile);
-
-        dbg!(&image_name);
-        dbg!(&dockerfile);
-        dbg!(&build_arguments);
 
         // Set stdin with pipe because we need to pass the dockerfile using it
         let mut buildah = Command::new("buildah")
@@ -233,13 +229,29 @@ fn get_toggles() -> Toggles {
     };
 
     let pulseaudio = ToggleImplication {
-        env: vec![],
+        env: vec![String::from(format!("XDG_RUNTIME_DIR={}", env!("XDG_RUNTIME_DIR")))],
         volumes: vec![
             String::from("/etc/machine-id:/etc/machine-id:ro"),
             String::from(format!("{}/pulse/native:{}/pulse/native", env!("XDG_RUNTIME_DIR"), env!("XDG_RUNTIME_DIR"))),
         ],
         devices: vec![],
         args: vec![],
+    };
+
+    let uidmap = ToggleImplication {
+        env: vec![],
+        volumes: vec![],
+        devices: vec![],
+        args: vec![
+            String::from("--uidmap"),
+            String::from("1000:0:1"),
+            String::from("--uidmap"),
+            String::from("0:1:1000"),
+            String::from("--uidmap"),
+            String::from("1001:1001:64536"),
+            String::from("--user"),
+            String::from("1000"),
+        ],
     };
 
     let dbus = ToggleImplication {
@@ -263,6 +275,7 @@ fn get_toggles() -> Toggles {
         pulseaudio: pulseaudio,
         dbus: dbus,
         net: net,
+        uidmap: uidmap,
     }
 }
 
