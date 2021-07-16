@@ -81,6 +81,10 @@ impl Container {
         // Default arguments
         arguments.extend(vec![
             String::from("run"),
+            String::from("--name"),
+            String::from(self.name.clone().replace("/", "_")),
+            String::from("--hostname"),
+            String::from(self.name.clone().replace("/", "_")),
             String::from("--interactive"),
             String::from("--tty"),
             String::from("--rm"),
