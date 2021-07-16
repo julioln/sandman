@@ -10,6 +10,12 @@ Each application has its own TOML configuration file with the instructions to bu
 
 Due to having a base image already built, the applications can run in ephemeral containers. That means that each time you launch a sandbox, it's brand new. If you need data persistence, you can export a volume inside the container where you need the data to persist.
 
+## Requirements
+
+It is required to have `podman` and `buildah` installed and configured to work with rootless containers.
+
+More information can be found at: https://github.com/containers/podman/blob/main/docs/tutorials/rootless_tutorial.md
+
 ## Usage
 
 `sandman <action> <container-name>` where action is `build` or `run`
@@ -43,7 +49,7 @@ env = []
 # devices = ['/dev/sdd']
 
 # If you need special environment variables
-env = ['ENV=test']
+# env = ['ENV=test']
 ```
 
 Build it with `sandman build xclock`
