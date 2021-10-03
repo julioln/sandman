@@ -14,6 +14,7 @@ struct Args {
     verbose: bool,
     action: String,
     container_name: String,
+    #[structopt(default_value = "")]
     execute: String,
 }
 
