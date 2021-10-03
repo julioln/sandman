@@ -10,8 +10,11 @@ const SANDMAN_DIR: &str = "Sandman";
 /// Command arguments
 #[derive(Debug, StructOpt)]
 struct Args {
+    #[structopt(short, long)]
+    verbose: bool,
     action: String,
     container_name: String,
+    execute: String,
 }
 
 /// Build related configuration of a container
@@ -81,8 +84,6 @@ impl Container {
         // Default arguments
         arguments.extend(vec![
             String::from("run"),
-            String::from("--name"),
-            String::from(self.name.clone().replace("/", "_")),
             String::from("--hostname"),
             String::from(self.name.clone().replace("/", "_")),
             String::from("--interactive"),
@@ -188,8 +189,16 @@ impl Container {
 
     /// Runs a given container
     fn run(&self) -> Result<ExitStatus, ExitStatus> {
-        let args = self.running_args();
-        dbg!(&args);
+        let mut args = self.running_args();
+        let cli_args = cli_args();
+
+        if cli_args.verbose {
+            dbg!(&args);
+        }
+
+        if !cli_args.execute.is_empty() {
+            args.push(cli_args.execute);
+        }
 
         let mut podman = Command::new("podman")
             .args(&args)
@@ -296,12 +305,18 @@ fn get_container(container_name: &String) -> Container {
     }
 }
 
+fn cli_args() -> Args {
+   Args::from_args()
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args = Args::from_args();
+    let args = cli_args();
     let container = get_container(&args.container_name);
 
-    dbg!(&args);
-    dbg!(&container);
+    if args.verbose {
+        dbg!(&args);
+        dbg!(&container);
+    }
 
     if args.action == "run" {
         match container.run() {
@@ -318,6 +333,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             },
             _ => {},
         }
+    }
+    else if args.action == "args" {
+        let arguments = container.running_args();
+        let joined = arguments.join(" ");
+        println!("{}", joined);
     }
     else {
         panic!("Action {} invalid", &args.action);
