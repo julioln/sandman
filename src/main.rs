@@ -230,7 +230,11 @@ impl Container {
 
 fn get_toggles() -> Toggles {
     let x11 = ToggleImplication {
-        env: vec![String::from(format!("DISPLAY={}", env!("DISPLAY")))],
+        env: vec![
+            String::from(format!("DISPLAY={}", env!("DISPLAY"))),
+            String::from(format!("XCURSOR_THEME={}", env!("XCURSOR_THEME"))),
+            String::from(format!("XCURSOR_SIZE={}", env!("XCURSOR_SIZE"))),
+        ],
         volumes: vec![String::from("/tmp/.X11-unix:/tmp/.X11-unix")],
         devices: vec![],
         args: vec![],
