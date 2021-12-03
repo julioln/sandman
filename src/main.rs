@@ -28,6 +28,7 @@ struct ContainerConfigBuild {
 #[derive(Debug, Deserialize)]
 struct ContainerConfigRun {
     x11: bool,
+    wayland: bool,
     dri: bool,
     ipc: bool,
     pulseaudio: bool,
@@ -65,6 +66,7 @@ struct ToggleImplication {
 #[derive(Hash, Eq, PartialEq, Debug)]
 struct Toggles {
     x11: ToggleImplication,
+    wayland: ToggleImplication,
     dri: ToggleImplication,
     ipc: ToggleImplication,
     pulseaudio: ToggleImplication,
@@ -97,6 +99,12 @@ impl Container {
             devices.extend(toggles.x11.devices);
             env.extend(toggles.x11.env);
             args.extend(toggles.x11.args);
+        }
+        if self.config.run.wayland {
+            volumes.extend(toggles.wayland.volumes);
+            devices.extend(toggles.wayland.devices);
+            env.extend(toggles.wayland.env);
+            args.extend(toggles.wayland.args);
         }
         if self.config.run.dri {
             volumes.extend(toggles.dri.volumes);
@@ -228,6 +236,13 @@ fn get_toggles() -> Toggles {
         args: vec![],
     };
 
+    let wayland = ToggleImplication {
+        env: vec![String::from(format!("WAYLAND_DISPLAY={}", env!("WAYLAND_DISPLAY")))],
+        volumes: vec![String::from(format!("{}/{}:{}/{}", env!("XDG_RUNTIME_DIR"), env!("WAYLAND_DISPLAY"), env!("XDG_RUNTIME_DIR"), env!("WAYLAND_DISPLAY")))],
+        devices: vec![],
+        args: vec![],
+    };
+
     let dri = ToggleImplication {
         env: vec![],
         volumes: vec![],
@@ -284,6 +299,7 @@ fn get_toggles() -> Toggles {
 
     Toggles {
         x11: x11,
+        wayland: wayland,
         dri: dri,
         ipc: ipc,
         pulseaudio: pulseaudio,

@@ -18,7 +18,7 @@ More information can be found at: https://github.com/containers/podman/blob/main
 
 ## Usage
 
-`sandman <action> <container-name>` where action is `build` or `run`
+`sandman <action> <container-name>` where action is `build`, `run` or `args`
 
 ## Example configuration file (aka Hello World)
 
@@ -32,6 +32,7 @@ CMD "/usr/bin/xclock"
 
 [run]
 x11 = true
+wayland = false
 dri = false
 ipc = false
 pulseaudio = false
@@ -46,7 +47,7 @@ env = []
 # volumes = ['/home/whoami/Sandman/xclock:/root']
 
 # If you need to access a device
-# devices = ['/dev/sdd']
+# devices = ['/dev/sdd', '/dev/video0']
 
 # If you need special environment variables
 # env = ['ENV=test']
