@@ -39,6 +39,7 @@ struct ContainerConfigRun {
     volumes: Vec<String>,
     devices: Vec<String>,
     env: Vec<String>,
+    ports: Vec<String>,
 }
 
 /// The configuration of a container
@@ -84,6 +85,7 @@ impl Container {
         let toggles = get_toggles();
         let mut volumes: Vec<String> = vec![];
         let mut devices: Vec<String> = vec![];
+        let mut ports: Vec<String> = vec![];
         let mut env: Vec<String> = vec![];
         let mut args: Vec<String> = vec![];
         let mut arguments: Vec<String> = vec![];
@@ -151,12 +153,16 @@ impl Container {
         volumes.extend(self.config.run.volumes.clone());
         env.extend(self.config.run.env.clone());
         devices.extend(self.config.run.devices.clone());
+        ports.extend(self.config.run.ports.clone());
 
         for volume in volumes.iter() {
             arguments.extend(vec![String::from("--volume"), String::from(volume)]);
         }
         for device in devices.iter() {
             arguments.extend(vec![String::from("--device"), String::from(device)]);
+        }
+        for port in ports.iter() {
+            arguments.extend(vec![String::from("-p"), String::from(port)]);
         }
         for env_ in env.iter() {
             arguments.extend(vec![String::from("--env"), String::from(env_)]);

@@ -42,6 +42,7 @@ uidmap = false
 volumes = []
 devices = []
 env = []
+ports = []
 
 # If you need data persistence
 # volumes = ['/home/whoami/Sandman/xclock:/root']
@@ -51,6 +52,9 @@ env = []
 
 # If you need special environment variables
 # env = ['ENV=test']
+
+# If you need to expose ports
+# ports = ['8080:8080']
 ```
 
 Build it with `sandman build xclock`
