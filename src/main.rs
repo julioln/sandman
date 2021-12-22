@@ -3,6 +3,7 @@ use serde::Deserialize;
 use home;
 use std::io::{Write};
 use std::process::{Command, Stdio, ExitStatus};
+use std::env::var;
 
 /// Constants
 const SANDMAN_DIR: &str = "Sandman";
@@ -55,6 +56,7 @@ struct Container {
     config: ContainerConfig,
 }
 
+/// Running configuration that a toggle implies
 #[derive(Hash, Eq, PartialEq, Debug)]
 struct ToggleImplication {
     env: Vec<String>,
@@ -63,6 +65,7 @@ struct ToggleImplication {
     args: Vec<String>,
 }
 
+/// All allowed and expected toggles
 #[derive(Hash, Eq, PartialEq, Debug)]
 struct Toggles {
     x11: ToggleImplication,
@@ -75,6 +78,7 @@ struct Toggles {
     uidmap: ToggleImplication,
 }
 
+/// The main container object
 impl Container {
     fn running_args(&self) -> Vec<String> {
         let toggles = get_toggles();
@@ -94,6 +98,7 @@ impl Container {
             String::from("--rm"),
         ]);
 
+        // TODO Improve this maybe with a hash
         if self.config.run.x11 {
             volumes.extend(toggles.x11.volumes);
             devices.extend(toggles.x11.devices);
@@ -228,12 +233,13 @@ impl Container {
     }
 }
 
+/// Returns the specific configuration for the toggles compiled at runtime
 fn get_toggles() -> Toggles {
     let x11 = ToggleImplication {
         env: vec![
-            String::from(format!("DISPLAY={}", env!("DISPLAY"))),
-            String::from(format!("XCURSOR_THEME={}", env!("XCURSOR_THEME"))),
-            String::from(format!("XCURSOR_SIZE={}", env!("XCURSOR_SIZE"))),
+            String::from(format!("DISPLAY={}", var("DISPLAY").unwrap_or_default())),
+            String::from(format!("XCURSOR_THEME={}", var("XCURSOR_THEME").unwrap_or_default())),
+            String::from(format!("XCURSOR_SIZE={}", var("XCURSOR_SIZE").unwrap_or_default())),
         ],
         volumes: vec![String::from("/tmp/.X11-unix:/tmp/.X11-unix")],
         devices: vec![],
@@ -241,8 +247,13 @@ fn get_toggles() -> Toggles {
     };
 
     let wayland = ToggleImplication {
-        env: vec![String::from(format!("WAYLAND_DISPLAY={}", env!("WAYLAND_DISPLAY")))],
-        volumes: vec![String::from(format!("{}/{}:{}/{}", env!("XDG_RUNTIME_DIR"), env!("WAYLAND_DISPLAY"), env!("XDG_RUNTIME_DIR"), env!("WAYLAND_DISPLAY")))],
+        env: vec![String::from(format!("WAYLAND_DISPLAY={}", var("WAYLAND_DISPLAY").unwrap_or_default()))],
+        volumes: vec![String::from(format!("{}/{}:{}/{}",
+                                           var("XDG_RUNTIME_DIR").unwrap_or_default(),
+                                           var("WAYLAND_DISPLAY").unwrap_or_default(),
+                                           var("XDG_RUNTIME_DIR").unwrap_or_default(),
+                                           var("WAYLAND_DISPLAY").unwrap_or_default())),
+        ],
         devices: vec![],
         args: vec![],
     };
@@ -262,10 +273,12 @@ fn get_toggles() -> Toggles {
     };
 
     let pulseaudio = ToggleImplication {
-        env: vec![String::from(format!("XDG_RUNTIME_DIR={}", env!("XDG_RUNTIME_DIR")))],
+        env: vec![String::from(format!("XDG_RUNTIME_DIR={}", var("XDG_RUNTIME_DIR").unwrap_or_default()))],
         volumes: vec![
             String::from("/etc/machine-id:/etc/machine-id:ro"),
-            String::from(format!("{}/pulse/native:{}/pulse/native", env!("XDG_RUNTIME_DIR"), env!("XDG_RUNTIME_DIR"))),
+            String::from(format!("{}/pulse/native:{}/pulse/native",
+                                 var("XDG_RUNTIME_DIR").unwrap_or_default(),
+                                 var("XDG_RUNTIME_DIR").unwrap())),
         ],
         devices: vec![],
         args: vec![],
@@ -288,8 +301,8 @@ fn get_toggles() -> Toggles {
     };
 
     let dbus = ToggleImplication {
-        env: vec![String::from(format!("DBUS_SESSION_BUS_ADDRESS=unix:path={}/bus", env!("XDG_RUNTIME_DIR")))],
-        volumes: vec![String::from(format!("{}/bus:{}/bus", env!("XDG_RUNTIME_DIR"), env!("XDG_RUNTIME_DIR")))],
+        env: vec![String::from(format!("DBUS_SESSION_BUS_ADDRESS=unix:path={}/bus", var("XDG_RUNTIME_DIR").unwrap_or_default()))],
+        volumes: vec![String::from(format!("{}/bus:{}/bus", var("XDG_RUNTIME_DIR").unwrap_or_default(), var("XDG_RUNTIME_DIR").unwrap()))],
         devices: vec![],
         args: vec![],
     };
@@ -326,10 +339,12 @@ fn get_container(container_name: &String) -> Container {
     }
 }
 
+/// Command line arguments
 fn cli_args() -> Args {
    Args::from_args()
 }
 
+/// Main function
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = cli_args();
     let container = get_container(&args.container_name);
