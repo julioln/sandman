@@ -9,14 +9,21 @@ use std::env::var;
 const SANDMAN_DIR: &str = "Sandman";
 
 /// Command arguments
-#[derive(Debug, StructOpt)]
+#[derive(Debug, PartialEq, StructOpt)]
 struct Args {
     #[structopt(short, long)]
     verbose: bool,
     action: String,
     container_name: String,
-    #[structopt(default_value = "")]
-    execute: String,
+    #[structopt(subcommand)]
+    execute: Option<ExecuteArgs>,
+}
+
+/// Optional subcommand arguments when running a container
+#[derive(Debug, PartialEq, StructOpt)]
+enum ExecuteArgs {
+    #[structopt(external_subcommand)]
+    Other(Vec<String>),
 }
 
 /// Build related configuration of a container
@@ -28,18 +35,50 @@ struct ContainerConfigBuild {
 /// Run related configuration of a container
 #[derive(Debug, Deserialize)]
 struct ContainerConfigRun {
+    #[serde(default)]
     x11: bool,
+
+    #[serde(default)]
     wayland: bool,
+
+    #[serde(default)]
     dri: bool,
+
+    #[serde(default)]
     ipc: bool,
+
+    #[serde(default)]
     pulseaudio: bool,
+
+    #[serde(default)]
     dbus: bool,
+
+    #[serde(default)]
     net: bool,
+
+    #[serde(default)]
     uidmap: bool,
+
+    #[serde(default)]
     volumes: Vec<String>,
+
+    #[serde(default)]
     devices: Vec<String>,
+
+    #[serde(default)]
     env: Vec<String>,
+
+    #[serde(default)]
     ports: Vec<String>,
+
+    #[serde(default)]
+    name: String,
+
+    #[serde(default)]
+    memory_limit: String,
+
+    #[serde(default)]
+    args: Vec<String>,
 }
 
 /// The configuration of a container
@@ -100,6 +139,17 @@ impl Container {
             String::from("--rm"),
         ]);
 
+        // Optional name argument
+        if !self.config.run.name.is_empty() {
+            arguments.extend(vec![String::from("--name"), self.config.run.name.clone()])
+        }
+
+        // Optional memory limit
+        if !self.config.run.memory_limit.is_empty() {
+            arguments.extend(vec![String::from("--memory"), self.config.run.memory_limit.clone()])
+        }
+
+        // Collect all configuration from toggles that are enabled
         // TODO Improve this maybe with a hash
         if self.config.run.x11 {
             volumes.extend(toggles.x11.volumes);
@@ -150,10 +200,12 @@ impl Container {
             args.extend(toggles.uidmap.args);
         }
 
+        // Add customized configuration
         volumes.extend(self.config.run.volumes.clone());
         env.extend(self.config.run.env.clone());
         devices.extend(self.config.run.devices.clone());
         ports.extend(self.config.run.ports.clone());
+        args.extend(self.config.run.args.clone());
 
         for volume in volumes.iter() {
             arguments.extend(vec![String::from("--volume"), String::from(volume)]);
@@ -171,6 +223,7 @@ impl Container {
             arguments.push(String::from(arg));
         }
 
+        // Image name
         arguments.push(self.name.clone());
 
         arguments
@@ -212,12 +265,17 @@ impl Container {
         let mut args = self.running_args();
         let cli_args = cli_args();
 
-        if cli_args.verbose {
-            dbg!(&args);
+        match cli_args.execute {
+            Some(other) => {
+                match other {
+                    ExecuteArgs::Other(extra_args) => args.extend(extra_args),
+                }
+            },
+            _ => {}
         }
 
-        if !cli_args.execute.is_empty() {
-            args.push(cli_args.execute);
+        if cli_args.verbose {
+            dbg!(&args);
         }
 
         let mut podman = Command::new("podman")
@@ -243,6 +301,7 @@ impl Container {
 fn get_toggles() -> Toggles {
     let x11 = ToggleImplication {
         env: vec![
+            // TODO Create wrapper for env var calls
             String::from(format!("DISPLAY={}", var("DISPLAY").unwrap_or_default())),
             String::from(format!("XCURSOR_THEME={}", var("XCURSOR_THEME").unwrap_or_default())),
             String::from(format!("XCURSOR_SIZE={}", var("XCURSOR_SIZE").unwrap_or_default())),
@@ -284,7 +343,7 @@ fn get_toggles() -> Toggles {
             String::from("/etc/machine-id:/etc/machine-id:ro"),
             String::from(format!("{}/pulse/native:{}/pulse/native",
                                  var("XDG_RUNTIME_DIR").unwrap_or_default(),
-                                 var("XDG_RUNTIME_DIR").unwrap())),
+                                 var("XDG_RUNTIME_DIR").unwrap_or_default())),
         ],
         devices: vec![],
         args: vec![],
@@ -295,6 +354,7 @@ fn get_toggles() -> Toggles {
         volumes: vec![],
         devices: vec![],
         args: vec![
+            // TODO Calculate this based on current uid
             String::from("--uidmap"),
             String::from("1000:0:1"),
             String::from("--uidmap"),
