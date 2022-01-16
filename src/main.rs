@@ -1,421 +1,73 @@
-use structopt::StructOpt;
-use serde::Deserialize;
+mod args;
+mod toggles;
+mod container;
+
+use crate::args::Args;
+//use structopt::StructOpt;
+use crate::container::Container;
+use crate::container::ContainerConfig;
 use home;
-use std::io::{Write};
-use std::process::{Command, Stdio, ExitStatus};
-use std::env::var;
+use std::path::{Path, Component};
+//use std::ffi::OsStr;
 
 /// Constants
 const SANDMAN_DIR: &str = "Sandman";
 
-/// Command arguments
-#[derive(Debug, PartialEq, StructOpt)]
-struct Args {
-    #[structopt(short, long)]
-    verbose: bool,
-    action: String,
-    container_name: String,
-    #[structopt(subcommand)]
-    execute: Option<ExecuteArgs>,
-}
-
-/// Optional subcommand arguments when running a container
-#[derive(Debug, PartialEq, StructOpt)]
-enum ExecuteArgs {
-    #[structopt(external_subcommand)]
-    Other(Vec<String>),
-}
-
-/// Build related configuration of a container
-#[derive(Debug, Deserialize)]
-struct ContainerConfigBuild {
-    instructions: String,
-}
-
-/// Run related configuration of a container
-#[derive(Debug, Deserialize)]
-struct ContainerConfigRun {
-    #[serde(default)]
-    x11: bool,
-
-    #[serde(default)]
-    wayland: bool,
-
-    #[serde(default)]
-    dri: bool,
-
-    #[serde(default)]
-    ipc: bool,
-
-    #[serde(default)]
-    pulseaudio: bool,
-
-    #[serde(default)]
-    dbus: bool,
-
-    #[serde(default)]
-    net: bool,
-
-    #[serde(default)]
-    uidmap: bool,
-
-    #[serde(default)]
-    volumes: Vec<String>,
-
-    #[serde(default)]
-    devices: Vec<String>,
-
-    #[serde(default)]
-    env: Vec<String>,
-
-    #[serde(default)]
-    ports: Vec<String>,
-
-    #[serde(default)]
-    name: String,
-
-    #[serde(default)]
-    memory_limit: String,
-
-    #[serde(default)]
-    args: Vec<String>,
-}
-
-/// The configuration of a container
-#[derive(Debug, Deserialize)]
-struct ContainerConfig {
-    build: ContainerConfigBuild,
-    run: ContainerConfigRun,
-}
-
-/// A container is represented here
-#[derive(Debug)]
-struct Container {
-    name: String,
-    file: String,
-    config: ContainerConfig,
-}
-
-/// Running configuration that a toggle implies
-#[derive(Hash, Eq, PartialEq, Debug)]
-struct ToggleImplication {
-    env: Vec<String>,
-    volumes: Vec<String>,
-    devices: Vec<String>,
-    args: Vec<String>,
-}
-
-/// All allowed and expected toggles
-#[derive(Hash, Eq, PartialEq, Debug)]
-struct Toggles {
-    x11: ToggleImplication,
-    wayland: ToggleImplication,
-    dri: ToggleImplication,
-    ipc: ToggleImplication,
-    pulseaudio: ToggleImplication,
-    dbus: ToggleImplication,
-    net: ToggleImplication,
-    uidmap: ToggleImplication,
-}
-
-/// The main container object
-impl Container {
-    fn running_args(&self) -> Vec<String> {
-        let toggles = get_toggles();
-        let mut volumes: Vec<String> = vec![];
-        let mut devices: Vec<String> = vec![];
-        let mut ports: Vec<String> = vec![];
-        let mut env: Vec<String> = vec![];
-        let mut args: Vec<String> = vec![];
-        let mut arguments: Vec<String> = vec![];
-
-        // Default arguments
-        arguments.extend(vec![
-            String::from("run"),
-            String::from("--hostname"),
-            String::from(self.name.clone().replace("/", "_")),
-            String::from("--interactive"),
-            String::from("--tty"),
-            String::from("--rm"),
-        ]);
-
-        // Optional name argument
-        if !self.config.run.name.is_empty() {
-            arguments.extend(vec![String::from("--name"), self.config.run.name.clone()])
-        }
-
-        // Optional memory limit
-        if !self.config.run.memory_limit.is_empty() {
-            arguments.extend(vec![String::from("--memory"), self.config.run.memory_limit.clone()])
-        }
-
-        // Collect all configuration from toggles that are enabled
-        // TODO Improve this maybe with a hash
-        if self.config.run.x11 {
-            volumes.extend(toggles.x11.volumes);
-            devices.extend(toggles.x11.devices);
-            env.extend(toggles.x11.env);
-            args.extend(toggles.x11.args);
-        }
-        if self.config.run.wayland {
-            volumes.extend(toggles.wayland.volumes);
-            devices.extend(toggles.wayland.devices);
-            env.extend(toggles.wayland.env);
-            args.extend(toggles.wayland.args);
-        }
-        if self.config.run.dri {
-            volumes.extend(toggles.dri.volumes);
-            devices.extend(toggles.dri.devices);
-            env.extend(toggles.dri.env);
-            args.extend(toggles.dri.args);
-        }
-        if self.config.run.ipc {
-            volumes.extend(toggles.ipc.volumes);
-            devices.extend(toggles.ipc.devices);
-            env.extend(toggles.ipc.env);
-            args.extend(toggles.ipc.args);
-        }
-        if self.config.run.pulseaudio {
-            volumes.extend(toggles.pulseaudio.volumes);
-            devices.extend(toggles.pulseaudio.devices);
-            env.extend(toggles.pulseaudio.env);
-            args.extend(toggles.pulseaudio.args);
-        }
-        if self.config.run.dbus {
-            volumes.extend(toggles.dbus.volumes);
-            devices.extend(toggles.dbus.devices);
-            env.extend(toggles.dbus.env);
-            args.extend(toggles.dbus.args);
-        }
-        if self.config.run.net {
-            volumes.extend(toggles.net.volumes);
-            devices.extend(toggles.net.devices);
-            env.extend(toggles.net.env);
-            args.extend(toggles.net.args);
-        }
-        if self.config.run.uidmap {
-            volumes.extend(toggles.uidmap.volumes);
-            devices.extend(toggles.uidmap.devices);
-            env.extend(toggles.uidmap.env);
-            args.extend(toggles.uidmap.args);
-        }
-
-        // Add customized configuration
-        volumes.extend(self.config.run.volumes.clone());
-        env.extend(self.config.run.env.clone());
-        devices.extend(self.config.run.devices.clone());
-        ports.extend(self.config.run.ports.clone());
-        args.extend(self.config.run.args.clone());
-
-        for volume in volumes.iter() {
-            arguments.extend(vec![String::from("--volume"), String::from(volume)]);
-        }
-        for device in devices.iter() {
-            arguments.extend(vec![String::from("--device"), String::from(device)]);
-        }
-        for port in ports.iter() {
-            arguments.extend(vec![String::from("-p"), String::from(port)]);
-        }
-        for env_ in env.iter() {
-            arguments.extend(vec![String::from("--env"), String::from(env_)]);
-        }
-        for arg in args.iter() {
-            arguments.push(String::from(arg));
-        }
-
-        // Image name
-        arguments.push(self.name.clone());
-
-        arguments
-    }
-
-    /// Builds a given container
-    fn build(&self) -> Result<ExitStatus, ExitStatus> {
-        let image_name = self.name.clone();
-        let dockerfile = self.config.build.instructions.clone();
-        let build_arguments = vec!["bud", "-f", "-", "-t", &image_name];
-
-        // Set stdin with pipe because we need to pass the dockerfile using it
-        let mut buildah = Command::new("buildah")
-            .args(&build_arguments)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .spawn()
-            .unwrap();
-
-        // Pass the dockerfile instructions via stdin
-        let mut stdin = buildah.stdin.take().expect("Failed to open stdin");
-        std::thread::spawn(move || {
-            stdin.write_all(dockerfile.as_bytes()).expect("Failed to write to stdin")
-        });
-
-        let status = buildah.wait().expect("Failed to read stdout");
-
-        if status.success() {
-            return Ok(status);
-        }
-        else {
-            return Err(status);
-        }
-    }
-
-    /// Runs a given container
-    fn run(&self) -> Result<ExitStatus, ExitStatus> {
-        let mut args = self.running_args();
-        let cli_args = cli_args();
-
-        match cli_args.execute {
-            Some(other) => {
-                match other {
-                    ExecuteArgs::Other(extra_args) => args.extend(extra_args),
-                }
-            },
-            _ => {}
-        }
-
-        if cli_args.verbose {
-            dbg!(&args);
-        }
-
-        let mut podman = Command::new("podman")
-            .args(&args)
-            .stdin(Stdio::inherit())
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .spawn()
-            .unwrap();
-
-        let status = podman.wait().expect("Failed to read stdout");
-
-        if status.success() {
-            return Ok(status);
-        }
-        else {
-            return Err(status);
-        }
-    }
-}
-
-/// Returns the specific configuration for the toggles compiled at runtime
-fn get_toggles() -> Toggles {
-    let x11 = ToggleImplication {
-        env: vec![
-            // TODO Create wrapper for env var calls
-            String::from(format!("DISPLAY={}", var("DISPLAY").unwrap_or_default())),
-            String::from(format!("XCURSOR_THEME={}", var("XCURSOR_THEME").unwrap_or_default())),
-            String::from(format!("XCURSOR_SIZE={}", var("XCURSOR_SIZE").unwrap_or_default())),
-        ],
-        volumes: vec![String::from("/tmp/.X11-unix:/tmp/.X11-unix")],
-        devices: vec![],
-        args: vec![],
-    };
-
-    let wayland = ToggleImplication {
-        env: vec![String::from(format!("WAYLAND_DISPLAY={}", var("WAYLAND_DISPLAY").unwrap_or_default()))],
-        volumes: vec![String::from(format!("{}/{}:{}/{}",
-                                           var("XDG_RUNTIME_DIR").unwrap_or_default(),
-                                           var("WAYLAND_DISPLAY").unwrap_or_default(),
-                                           var("XDG_RUNTIME_DIR").unwrap_or_default(),
-                                           var("WAYLAND_DISPLAY").unwrap_or_default())),
-        ],
-        devices: vec![],
-        args: vec![],
-    };
-
-    let dri = ToggleImplication {
-        env: vec![],
-        volumes: vec![],
-        devices: vec![String::from("/dev/dri")],
-        args: vec![],
-    };
-
-    let ipc = ToggleImplication {
-        env: vec![],
-        volumes: vec![],
-        devices: vec![],
-        args: vec![String::from("--ipc"), String::from("host")],
-    };
-
-    let pulseaudio = ToggleImplication {
-        env: vec![String::from(format!("XDG_RUNTIME_DIR={}", var("XDG_RUNTIME_DIR").unwrap_or_default()))],
-        volumes: vec![
-            String::from("/etc/machine-id:/etc/machine-id:ro"),
-            String::from(format!("{}/pulse/native:{}/pulse/native",
-                                 var("XDG_RUNTIME_DIR").unwrap_or_default(),
-                                 var("XDG_RUNTIME_DIR").unwrap_or_default())),
-        ],
-        devices: vec![],
-        args: vec![],
-    };
-
-    let uidmap = ToggleImplication {
-        env: vec![],
-        volumes: vec![],
-        devices: vec![],
-        args: vec![
-            // TODO Calculate this based on current uid
-            String::from("--uidmap"),
-            String::from("1000:0:1"),
-            String::from("--uidmap"),
-            String::from("0:1:1000"),
-            String::from("--uidmap"),
-            String::from("1001:1001:64536"),
-            String::from("--user"),
-            String::from("1000"),
-        ],
-    };
-
-    let dbus = ToggleImplication {
-        env: vec![String::from(format!("DBUS_SESSION_BUS_ADDRESS=unix:path={}/bus", var("XDG_RUNTIME_DIR").unwrap_or_default()))],
-        volumes: vec![String::from(format!("{}/bus:{}/bus", var("XDG_RUNTIME_DIR").unwrap_or_default(), var("XDG_RUNTIME_DIR").unwrap()))],
-        devices: vec![],
-        args: vec![],
-    };
-
-    let net = ToggleImplication {
-        env: vec![],
-        volumes: vec![],
-        devices: vec![],
-        args: vec![String::from("--network"), String::from("slirp4netns")],
-    };
-
-    Toggles {
-        x11: x11,
-        wayland: wayland,
-        dri: dri,
-        ipc: ipc,
-        pulseaudio: pulseaudio,
-        dbus: dbus,
-        net: net,
-        uidmap: uidmap,
-    }
-}
-
 /// Loads and returns a container based on the TOML configuration
-fn get_container(container_name: &String) -> Container {
-    let config_filename = format!("{}/{}/{}.toml", home::home_dir().unwrap().display(), SANDMAN_DIR, container_name);
+fn load_container(container_name: &String, absolute: bool) -> Container {
+    let config_filename: String;
+    let container_canonical_name: String;
+
+    if absolute {
+        config_filename = container_name.clone();
+        //let path = Path::new(&config_filename);
+        //let path_components = path.components().collect::<Vec<_>>();
+        //let basename = path_components.last().unwrap();
+        container_canonical_name = String::from("");
+    }
+    else {
+        config_filename = format!("{}/{}/{}.toml", home::home_dir().unwrap().display(), SANDMAN_DIR, container_name);
+        container_canonical_name = format!("sandman/{}", container_name.clone());
+    }
+
     let config_raw = std::fs::read_to_string(&config_filename).unwrap();
     let config: ContainerConfig = toml::from_str(&config_raw).unwrap();
 
     Container {
-        name: format!("sandman/{}", container_name.clone()),
+        name: container_canonical_name,
         file: config_filename,
         config: config,
     }
 }
 
-/// Command line arguments
-fn cli_args() -> Args {
-   Args::from_args()
-}
-
 /// Main function
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args = cli_args();
-    let container = get_container(&args.container_name);
+    let raw_args: Vec<String> = std::env::args().collect();
+    let args: Args;
+    let container: Container;
+
+    let binpath = Path::new(&raw_args[0]);
+    let binpath_components = binpath.components().collect::<Vec<_>>();
+    let basename = binpath_components.last().unwrap();
+
+    // Is our basename is "sandman" ?
+    if basename == &Component::Normal("sandman".as_ref()) {
+        // Running normally
+        args = Args::cli_args();
+        container = load_container(&args.container_name, false);
+    }
+    else {
+        // Running as shebang, construct args as if we were calling "run"
+        panic!("Running other than from the sandman binary is not yet implemented!")
+        //let mut mock_args = vec![String::from("run")];
+        //mock_args.extend(raw_args.clone());
+        //args = Args::from_iter(&mock_args);
+        //container = load_container(&args.container_name, true);
+    }
 
     if args.verbose {
+        dbg!(&binpath);
+        dbg!(&raw_args);
         dbg!(&args);
         dbg!(&container);
     }
@@ -423,15 +75,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if args.action == "run" {
         match container.run() {
             Err(status) => {
-                println!("Failed to run container. Exit status: {}", status);
+                println!("Failed to run container, {}", status);
             },
             _ => {},
         }
     }
+    else if args.action == "run_or_exec" {
+        panic!("run_or_exec not implemented yet!");
+    }
     else if args.action == "build" {
         match container.build() {
             Err(status) => {
-                println!("Failed to build container. Exit status: {}", status);
+                println!("Failed to build container, {}", status);
             },
             _ => {},
         }
