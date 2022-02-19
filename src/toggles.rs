@@ -1,3 +1,5 @@
+use users::get_current_uid;
+
 /// Running configuration that a toggle implies
 #[derive(Hash, Eq, PartialEq, Debug)]
 pub struct ToggleImplication {
@@ -78,6 +80,10 @@ impl Toggles {
             args: vec![],
         };
 
+        let current_uid = get_current_uid();
+        let first_uid = current_uid + 1;
+        let last_uid = 65536 - current_uid;
+
         let uidmap = ToggleImplication {
             env: vec![],
             volumes: vec![],
@@ -85,13 +91,13 @@ impl Toggles {
             args: vec![
                 // TODO Calculate this based on current uid
                 String::from("--uidmap"),
-                String::from("1000:0:1"),
+                String::from(format!("{}:0:1", current_uid)),
                 String::from("--uidmap"),
-                String::from("0:1:1000"),
+                String::from(format!("0:1:{}", current_uid)),
                 String::from("--uidmap"),
-                String::from("1001:1001:64536"),
+                String::from(format!("{}:{}:{}", first_uid, first_uid, last_uid)),
                 String::from("--user"),
-                String::from("1000"),
+                String::from(format!("{}", current_uid)),
             ],
         };
 
