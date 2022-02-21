@@ -197,9 +197,27 @@ impl Container {
 
     /// Builds a given container
     pub fn build(&self) -> Result<ExitStatus, ExitStatus> {
+        let cli_args = Args::cli_args();
         let image_name = self.name.clone();
         let dockerfile = self.config.build.instructions.clone();
-        let build_arguments = vec!["bud", "-f", "-", "-t", &image_name];
+        let mut build_arguments: Vec<String> = vec![String::from("bud")];
+
+        if cli_args.cache {
+            build_arguments.extend(vec![
+                String::from("--layers=true"),
+            ]);
+        }
+
+        build_arguments.extend(vec![
+            String::from("-f"),
+            String::from("-"),
+            String::from("-t"),
+            String::from(&image_name),
+        ]);
+
+        if cli_args.verbose {
+            dbg!(&build_arguments);
+        }
 
         // Set stdin with pipe because we need to pass the dockerfile using it
         let mut buildah = Command::new("buildah")
