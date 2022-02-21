@@ -5,8 +5,16 @@ use structopt::StructOpt;
 pub struct Args {
     #[structopt(short, long)]
     pub verbose: bool,
+
+    #[structopt(short, long)]
+    pub keep: bool,
+
+    #[structopt(short, long)]
+    pub cache: bool,
+
     pub action: String,
     pub container_name: String,
+
     #[structopt(subcommand)]
     pub execute: Option<ExecuteArgs>,
 }

@@ -81,6 +81,7 @@ impl Container {
 
     /// Returns a vector of podman arguments compiled from all configuration
     pub fn running_args(&self) -> Vec<String> {
+        let cli_args = Args::cli_args();
         let toggles = Toggles::get_toggles();
         let mut volumes: Vec<String> = vec![];
         let mut devices: Vec<String> = vec![];
@@ -96,8 +97,13 @@ impl Container {
             String::from(self.name.clone().replace("/", "_")),
             String::from("--interactive"),
             String::from("--tty"),
-            String::from("--rm"),
         ]);
+
+        if !cli_args.keep {
+            arguments.extend(vec![
+                String::from("--rm"),
+            ]);
+        }
 
         // Optional name argument
         if !self.config.run.name.is_empty() {
