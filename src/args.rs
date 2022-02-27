@@ -11,6 +11,10 @@ pub struct Args {
     #[structopt(short, long)]
     pub keep: bool,
 
+    /// RUN: Override or set environment variables
+    #[structopt(short, long)]
+    pub env: Vec<String>,
+
     /// BUILD: Use layer cache (--layers=true)
     #[structopt(short, long)]
     pub cache: bool,

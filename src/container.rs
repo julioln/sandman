@@ -173,6 +173,13 @@ impl Container {
         ports.extend(self.config.run.ports.clone());
         args.extend(self.config.run.args.clone());
 
+        // Mix command line overrides
+        if !cli_args.env.is_empty() {
+            env.extend(cli_args.env.clone());
+            env.sort();
+            env.dedup();
+        }
+
         for volume in volumes.iter() {
             arguments.extend(vec![String::from("--volume"), String::from(volume)]);
         }
@@ -191,6 +198,17 @@ impl Container {
 
         // Image name
         arguments.push(self.name.clone());
+
+        // Pass extra arguments after the image name, if we have any coming from
+        // the command line
+        match cli_args.execute {
+            Some(other) => {
+                match other {
+                    ExecuteArgs::Other(extra_args) => arguments.extend(extra_args),
+                }
+            },
+            _ => {}
+        }
 
         arguments
     }
@@ -246,19 +264,9 @@ impl Container {
 
     /// Runs a given container
     pub fn run(&self) -> Result<ExitStatus, ExitStatus> {
-        let mut args = self.running_args();
+        let args = self.running_args();
         let cli_args = Args::cli_args();
 
-        // Pass extra arguments after the image name, if we have any coming from
-        // the command line
-        match cli_args.execute {
-            Some(other) => {
-                match other {
-                    ExecuteArgs::Other(extra_args) => args.extend(extra_args),
-                }
-            },
-            _ => {}
-        }
 
         if cli_args.verbose {
             dbg!(&args);
