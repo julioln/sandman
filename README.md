@@ -86,7 +86,7 @@ home = false
 net = false
 
 # Any networking modes allowed by podman-run
-network = none
+network = "none"
 
 volumes = []
 devices = []
