@@ -1,3 +1,5 @@
+use home::{home_dir};
+use crate::SANDMAN_STORAGE_DIR;
 use crate::args::Args;
 use crate::args::ExecuteArgs;
 use crate::toggles::Toggles;
@@ -5,6 +7,8 @@ use crate::toggles::Toggles;
 use serde::Deserialize;
 use std::io::{Write};
 use std::process::{Command, Stdio, ExitStatus};
+use std::fs::create_dir_all;
+use std::path::Path;
 
 /// Build related configuration of a container
 #[derive(Debug, Deserialize)]
@@ -33,14 +37,21 @@ pub struct ContainerConfigRun {
     #[serde(default)]
     dbus: bool,
 
+    // Kept for backwards compatibility
     #[serde(default)]
     net: bool,
+
+    #[serde(default)]
+    network: String,
 
     #[serde(default)]
     uidmap: bool,
 
     #[serde(default)]
     volumes: Vec<String>,
+
+    #[serde(default)]
+    home: bool,
 
     #[serde(default)]
     devices: Vec<String>,
@@ -72,6 +83,7 @@ pub struct ContainerConfig {
 #[derive(Debug)]
 pub struct Container {
     pub name: String,
+    pub basename: String,
     pub file: String,
     pub config: ContainerConfig,
 }
@@ -94,7 +106,7 @@ impl Container {
         arguments.extend(vec![
             String::from("run"),
             String::from("--hostname"),
-            String::from(self.name.clone().replace("/", "_")),
+            self.name.clone().replace('/', "_"),
             String::from("--interactive"),
             String::from("--tty"),
         ]);
@@ -105,14 +117,24 @@ impl Container {
             ]);
         }
 
-        // Optional name argument
         if !self.config.run.name.is_empty() {
             arguments.extend(vec![String::from("--name"), self.config.run.name.clone()])
         }
 
-        // Optional memory limit
         if !self.config.run.memory_limit.is_empty() {
             arguments.extend(vec![String::from("--memory"), self.config.run.memory_limit.clone()])
+        }
+
+        if self.config.run.home {
+            let local_home_mount = format!("{}/{}/{}",
+                home_dir().unwrap().display(),
+                SANDMAN_STORAGE_DIR,
+                self.basename
+            );
+            create_dir_all(Path::new(&local_home_mount)).unwrap();
+            volumes.extend([
+                format!("{}:/home", local_home_mount)
+            ]);
         }
 
         // Collect all configuration from toggles that are enabled
@@ -153,17 +175,24 @@ impl Container {
             env.extend(toggles.dbus.env);
             args.extend(toggles.dbus.args);
         }
+        if self.config.run.uidmap {
+            volumes.extend(toggles.uidmap.volumes);
+            devices.extend(toggles.uidmap.devices);
+            env.extend(toggles.uidmap.env);
+            args.extend(toggles.uidmap.args);
+        }
+
         if self.config.run.net {
             volumes.extend(toggles.net.volumes);
             devices.extend(toggles.net.devices);
             env.extend(toggles.net.env);
             args.extend(toggles.net.args);
         }
-        if self.config.run.uidmap {
-            volumes.extend(toggles.uidmap.volumes);
-            devices.extend(toggles.uidmap.devices);
-            env.extend(toggles.uidmap.env);
-            args.extend(toggles.uidmap.args);
+        else if self.config.run.network.is_empty() {
+            arguments.extend(vec![String::from("--network"), String::from("none")]);
+        }
+        else {
+            arguments.extend(vec![String::from("--network"), self.config.run.network.clone()]);
         }
 
         // Add customized configuration
@@ -201,13 +230,10 @@ impl Container {
 
         // Pass extra arguments after the image name, if we have any coming from
         // the command line
-        match cli_args.execute {
-            Some(other) => {
-                match other {
-                    ExecuteArgs::Other(extra_args) => arguments.extend(extra_args),
-                }
-            },
-            _ => {}
+        if let Some(other) = cli_args.execute {
+            match other {
+                ExecuteArgs::Other(extra_args) => arguments.extend(extra_args),
+            }
         }
 
         arguments
@@ -255,10 +281,10 @@ impl Container {
         let status = buildah.wait().expect("Failed to read stdout");
 
         if status.success() {
-            return Ok(status);
+            Ok(status)
         }
         else {
-            return Err(status);
+            Err(status)
         }
     }
 
@@ -266,7 +292,6 @@ impl Container {
     pub fn run(&self) -> Result<ExitStatus, ExitStatus> {
         let args = self.running_args();
         let cli_args = Args::cli_args();
-
 
         if cli_args.verbose {
             dbg!(&args);
@@ -283,10 +308,10 @@ impl Container {
         let status = podman.wait().expect("Failed to read stdout");
 
         if status.success() {
-            return Ok(status);
+            Ok(status)
         }
         else {
-            return Err(status);
+            Err(status)
         }
     }
 

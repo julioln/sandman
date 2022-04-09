@@ -6,28 +6,29 @@ use crate::args::Args;
 //use structopt::StructOpt;
 use crate::container::Container;
 use crate::container::ContainerConfig;
-use home;
+use home::{home_dir};
 use std::path::{Path, Component};
 //use std::ffi::OsStr;
 
 /// Constants
-const SANDMAN_DIR: &str = "Sandman";
+pub const SANDMAN_DIR: &str = ".config/sandman";
+pub const SANDMAN_STORAGE_DIR: &str = ".local/share/sandman";
 
 /// Loads and returns a container based on the TOML configuration
-fn load_container(container_name: &String, absolute: bool) -> Container {
+fn load_container(container_name: &str, absolute: bool) -> Container {
     let config_filename: String;
     let container_canonical_name: String;
 
     if absolute {
-        config_filename = container_name.clone();
+        config_filename = container_name.to_string();
         //let path = Path::new(&config_filename);
         //let path_components = path.components().collect::<Vec<_>>();
         //let basename = path_components.last().unwrap();
         container_canonical_name = String::from("");
     }
     else {
-        config_filename = format!("{}/{}/{}.toml", home::home_dir().unwrap().display(), SANDMAN_DIR, container_name);
-        container_canonical_name = format!("sandman/{}", container_name.clone());
+        config_filename = format!("{}/{}/{}.toml", home_dir().unwrap().display(), SANDMAN_DIR, container_name);
+        container_canonical_name = format!("sandman/{}", container_name);
     }
 
     let config_raw = std::fs::read_to_string(&config_filename).unwrap();
@@ -35,8 +36,9 @@ fn load_container(container_name: &String, absolute: bool) -> Container {
 
     Container {
         name: container_canonical_name,
+        basename: container_name.to_string(),
         file: config_filename,
-        config: config,
+        config
     }
 }
 
@@ -73,22 +75,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if args.action == "run" {
-        match container.run() {
-            Err(status) => {
-                println!("Failed to run container, {}", status);
-            },
-            _ => {},
+        if let Err(status) = container.run() {
+            println!("Failed to run container, {}", status);
         }
     }
-    else if args.action == "run_or_exec" {
+    else if args.action == "build_or_run_or_exec" {
         panic!("run_or_exec not implemented yet!");
     }
     else if args.action == "build" {
-        match container.build() {
-            Err(status) => {
-                println!("Failed to build container, {}", status);
-            },
-            _ => {},
+        if let Err(status) = container.build() {
+            println!("Failed to build container, {}", status);
         }
     }
     else if args.action == "args" {

@@ -44,11 +44,11 @@ impl Toggles {
 
         let wayland = ToggleImplication {
             env: vec![String::from("WAYLAND_DISPLAY")],
-            volumes: vec![String::from(format!("{}/{}:{}/{}",
-                                            Toggles::env("XDG_RUNTIME_DIR"),
-                                            Toggles::env("WAYLAND_DISPLAY"),
-                                            Toggles::env("XDG_RUNTIME_DIR"),
-                                            Toggles::env("WAYLAND_DISPLAY"))),
+            volumes: vec![format!("{}/{}:{}/{}",
+                Toggles::env("XDG_RUNTIME_DIR"),
+                Toggles::env("WAYLAND_DISPLAY"),
+                Toggles::env("XDG_RUNTIME_DIR"),
+                Toggles::env("WAYLAND_DISPLAY")),
             ],
             devices: vec![],
             args: vec![],
@@ -72,9 +72,9 @@ impl Toggles {
             env: vec![String::from("XDG_RUNTIME_DIR")],
             volumes: vec![
                 String::from("/etc/machine-id:/etc/machine-id:ro"),
-                String::from(format!("{}/pulse/native:{}/pulse/native",
-                                    Toggles::env("XDG_RUNTIME_DIR"),
-                                    Toggles::env("XDG_RUNTIME_DIR"))),
+                format!("{}/pulse/native:{}/pulse/native",
+                    Toggles::env("XDG_RUNTIME_DIR"),
+                    Toggles::env("XDG_RUNTIME_DIR")),
             ],
             devices: vec![],
             args: vec![],
@@ -89,46 +89,49 @@ impl Toggles {
             volumes: vec![],
             devices: vec![],
             args: vec![
-                // TODO Calculate this based on current uid
                 String::from("--uidmap"),
-                String::from(format!("{}:0:1", current_uid)),
+                format!("{}:0:1", current_uid),
                 String::from("--uidmap"),
-                String::from(format!("0:1:{}", current_uid)),
+                format!("0:1:{}", current_uid),
                 String::from("--uidmap"),
-                String::from(format!("{}:{}:{}", first_uid, first_uid, last_uid)),
+                format!("{}:{}:{}", first_uid, first_uid, last_uid),
                 String::from("--user"),
-                String::from(format!("{}", current_uid)),
+                format!("{}", current_uid),
             ],
         };
 
         let dbus = ToggleImplication {
-            env: vec![String::from(format!("DBUS_SESSION_BUS_ADDRESS=unix:path={}/bus",
-                                           Toggles::env("XDG_RUNTIME_DIR"))),
+            env: vec![format!("DBUS_SESSION_BUS_ADDRESS=unix:path={}/bus",
+                Toggles::env("XDG_RUNTIME_DIR")),
             ],
-            volumes: vec![String::from(format!("{}/bus:{}/bus",
-                                               Toggles::env("XDG_RUNTIME_DIR"),
-                                               Toggles::env("XDG_RUNTIME_DIR"))),
+            volumes: vec![format!("{}/bus:{}/bus",
+                Toggles::env("XDG_RUNTIME_DIR"),
+                Toggles::env("XDG_RUNTIME_DIR")),
             ],
             devices: vec![],
             args: vec![],
         };
 
+        // Kept for backwards compatibility
         let net = ToggleImplication {
             env: vec![],
             volumes: vec![],
             devices: vec![],
-            args: vec![String::from("--network"), String::from("slirp4netns")],
+            args: vec![
+                String::from("--network"),
+                String::from("slirp4netns")
+            ],
         };
 
         Toggles {
-            x11: x11,
-            wayland: wayland,
-            dri: dri,
-            ipc: ipc,
-            pulseaudio: pulseaudio,
-            dbus: dbus,
-            net: net,
-            uidmap: uidmap,
+            x11,
+            wayland,
+            dri,
+            ipc,
+            pulseaudio,
+            dbus,
+            net,
+            uidmap,
         }
     }
 
