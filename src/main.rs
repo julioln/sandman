@@ -76,7 +76,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if args.action == "run" {
         if let Err(status) = container.run() {
-            println!("Failed to run container, {}", status);
+            panic!("Failed to run container, {}", status);
         }
     }
     else if args.action == "build_or_run_or_exec" {
@@ -84,7 +84,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     else if args.action == "build" {
         if let Err(status) = container.build() {
-            println!("Failed to build container, {}", status);
+            panic!("Failed to build container, {}", status);
         }
     }
     else if args.action == "args" {
