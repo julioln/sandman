@@ -16,33 +16,35 @@ var (
 	Socket  string = ""
 
 	rootCmd = &cobra.Command{
-		Use:   "sandman",
-		Short: "sandman: short",
-		Long:  "sandman: long",
-	}
-
-	buildCmd = &cobra.Command{
-		Use:     "build",
-		Short:   "build: short",
-		Long:    "build: long",
-		Aliases: []string{"b"},
-		Run: func(cmd *cobra.Command, args []string) {
+		Use:     "sandman",
+		Short:   "sandman: Sandboxes with Podman",
+		Long:    "sandman: Build and run sandboxes with Podman",
+		Version: "2.0",
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			if Verbose {
 				fmt.Println("Args: ", args)
 			}
+		},
+	}
+
+	buildCmd = &cobra.Command{
+		Use:     "build [container_name]",
+		Short:   "Build an image",
+		Long:    "Build an image",
+		Aliases: []string{"b"},
+		Args:    cobra.MinimumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
 			build.CmdExecute(Socket, Verbose, Layers, args)
 		},
 	}
 
 	runCmd = &cobra.Command{
-		Use:     "run",
-		Short:   "run: short",
-		Long:    "run: long",
+		Use:     "run [container_image]",
+		Short:   "Run a sandboxed container",
+		Long:    "Run a sandboxed container",
 		Aliases: []string{"r"},
+		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			if Verbose {
-				fmt.Println("Args: ", args)
-			}
 			run.CmdExecute(Socket, Verbose, Keep, args)
 		},
 	}
