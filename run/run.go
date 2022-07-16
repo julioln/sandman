@@ -4,12 +4,17 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/julioln/sandman/config"
 	"github.com/julioln/sandman/podman"
 
+	"github.com/containers/podman/v4/libpod/define"
 	"github.com/containers/podman/v4/pkg/bindings/containers"
 	"github.com/containers/podman/v4/pkg/specgen"
+	"github.com/containers/storage/pkg/idtools"
+
+	specs "github.com/opencontainers/runtime-spec/specs-go"
 )
 
 func Start(socket string, containerConfig config.ContainerConfig, keep bool, verbose bool, runCmd []string) {
@@ -25,8 +30,9 @@ func Start(socket string, containerConfig config.ContainerConfig, keep bool, ver
 	}
 
 	if verbose {
-		fmt.Println("Container Config: ", containerConfig)
-		fmt.Println("Connection: ", conn)
+		fmt.Printf("Container Config: %#v\n", containerConfig)
+		fmt.Printf("Connection: %#v\n", conn)
+		fmt.Printf("Container Spec: %#v\n", spec)
 	}
 
 	var createOptions containers.CreateOptions
@@ -37,7 +43,7 @@ func Start(socket string, containerConfig config.ContainerConfig, keep bool, ver
 	}
 
 	if verbose {
-		fmt.Println("Container: ", container)
+		fmt.Printf("Container: %#v\n", container)
 	}
 
 	err = containers.Start(conn, container.ID, nil)
@@ -45,17 +51,20 @@ func Start(socket string, containerConfig config.ContainerConfig, keep bool, ver
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	//var stopOptions containers.StopOptions
-	//defer containers.Stop(conn, container.ID, &stopOptions)
+
+	var waitOptions containers.WaitOptions
+	waitOptions.Condition = append(waitOptions.Condition, define.ContainerStateRunning)
+	_, err = containers.Wait(conn, container.ID, &waitOptions)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 
 	if verbose {
 		var inspectOptions containers.InspectOptions
 		containerData, err := containers.Inspect(conn, container.ID, &inspectOptions)
 		if err == nil {
-			fmt.Println("Container data: ", containerData)
-			fmt.Println("Exec IDs: ", containerData.ExecIDs)
-			fmt.Println("Container Config: ", containerData.Config)
-			fmt.Println("Container Config TTY: ", containerData.Config.Tty)
+			fmt.Printf("Container data: %#v\n", containerData)
 		}
 	}
 
@@ -77,8 +86,6 @@ func Start(socket string, containerConfig config.ContainerConfig, keep bool, ver
 	//	fmt.Println(err)
 	//	os.Exit(1)
 	//}
-
-	//_, err = containers.Wait(conn, container.ID, &waitOptions)
 }
 
 func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
@@ -89,8 +96,91 @@ func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
 	spec.Terminal = true
 	spec.Stdin = true
 	spec.Remove = true
+	spec.Hostname = strings.Replace(containerConfig.Name, "/", "-", -1)
+	spec.Env = make(map[string]string)
+	spec.Labels = make(map[string]string)
+	spec.Labels["sandman_image_name"] = containerConfig.Name
 
-	// TODO: Expand container config
+	if containerConfig.Run.X11 {
+		spec.Env["DISPLAY"] = os.Getenv("DISPLAY")
+		spec.Env["XCURSOR_THEME"] = os.Getenv("XCURSOR_THEME")
+		spec.Env["XCURSOR_SIZE"] = os.Getenv("XCURSOR_SIZE")
+		spec.Mounts = append(spec.Mounts, specs.Mount{
+			Destination: "/tmp/.X11-unix",
+			Source:      "/tmp/.X11-unix",
+			Type:        "bind",
+		})
+	}
+
+	if containerConfig.Run.Wayland {
+		spec.Env["WAYLAND_DISPLAY"] = os.Getenv("WAYLAND_DISPLAY")
+		spec.Mounts = append(spec.Mounts, specs.Mount{
+			Destination: fmt.Sprintf("%s/%s", os.Getenv("XDG_RUNTIME_DIR"), os.Getenv("WAYLAND_DISPLAY")),
+			Source:      fmt.Sprintf("%s/%s", os.Getenv("XDG_RUNTIME_DIR"), os.Getenv("WAYLAND_DISPLAY")),
+			Type:        "bind",
+		})
+	}
+
+	if containerConfig.Run.Dri || containerConfig.Run.Gpu {
+		spec.Devices = append(spec.Devices, specs.LinuxDevice{
+			Path: "/dev/dri",
+		})
+	}
+
+	if containerConfig.Run.Ipc {
+		spec.IpcNS.NSMode = specgen.NamespaceMode("host")
+	}
+
+	if containerConfig.Run.Pulseaudio {
+		spec.Env["XDG_RUNTIME_DIR"] = os.Getenv("XDG_RUNTIME_DIR")
+		spec.Mounts = append(spec.Mounts,
+			specs.Mount{
+				Destination: "/etc/machine-id",
+				Source:      "/etc/machine-id",
+				Type:        "bind",
+				Options:     []string{"ro"},
+			},
+			specs.Mount{
+				Destination: fmt.Sprintf("%s/pulse/native", os.Getenv("XDG_RUNTIME_DIR")),
+				Source:      fmt.Sprintf("%s/pulse/native", os.Getenv("XDG_RUNTIME_DIR")),
+				Type:        "bind",
+			},
+		)
+	}
+
+	if containerConfig.Run.Dbus {
+		spec.Env["DBUS_SESSION_BUS_ADDRESS"] = fmt.Sprintf("unix:path=%s/bus", os.Getenv("XDG_RUNTIME_DIR"))
+		spec.Mounts = append(spec.Mounts, specs.Mount{
+			Destination: fmt.Sprintf("%s/bus", os.Getenv("XDG_RUNTIME_DIR")),
+			Source:      fmt.Sprintf("%s/bus", os.Getenv("XDG_RUNTIME_DIR")),
+			Type:        "bind",
+		})
+	}
+
+	if containerConfig.Run.Uidmap {
+		spec.User = fmt.Sprint(os.Getuid())
+		spec.IDMappings.UIDMap = append(spec.IDMappings.UIDMap,
+			idtools.IDMap{
+				ContainerID: os.Getuid(),
+				HostID:      0,
+				Size:        1,
+			},
+			idtools.IDMap{
+				ContainerID: 0,
+				HostID:      1,
+				Size:        os.Getuid(),
+			},
+			idtools.IDMap{
+				ContainerID: os.Getuid() + 1,
+				HostID:      os.Getuid() + 1,
+				Size:        65536 - os.Getuid(),
+			},
+		)
+	}
+
+	if containerConfig.Run.Name != "" {
+		spec.Name = containerConfig.Run.Name
+	}
 
 	return spec
 }

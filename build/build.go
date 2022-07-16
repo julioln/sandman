@@ -18,8 +18,8 @@ func Build(socket string, containerConfig config.ContainerConfig, layers bool, v
 	var options entities.BuildOptions
 
 	if verbose {
-		fmt.Println("Container Config: ", containerConfig)
-		fmt.Println("Connection: ", conn)
+		fmt.Printf("Container Config: %#v\n", containerConfig)
+		fmt.Printf("Connection: %#v\n", conn)
 	}
 
 	// Create temporary Dockerfile

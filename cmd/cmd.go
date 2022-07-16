@@ -58,7 +58,7 @@ func init() {
 	rootCmd.AddCommand(buildCmd)
 	rootCmd.AddCommand(runCmd)
 
-	rootCmd.PersistentFlags().BoolVarP(&Verbose, "verbose", "v", false, "Verbose mode")
+	rootCmd.PersistentFlags().BoolVarP(&Verbose, "verbose", "v", false, "Verbose mode (debug)")
 	rootCmd.PersistentFlags().StringVarP(&Socket, "socket", "", "", "Specify podman socket")
 	runCmd.Flags().BoolVarP(&Keep, "keep", "k", false, "Keep container after exit (omit --rm)")
 	buildCmd.Flags().BoolVarP(&Layers, "layers", "l", false, "Use layers for building (default docker behavior)")

@@ -20,12 +20,15 @@ type ContainerConfigRun struct {
 	Wayland    bool
 	Dri        bool
 	Ipc        bool
+	Gpu        bool
 	Pulseaudio bool
 	Dbus       bool
 	Net        bool
 	Uidmap     bool
 	Home       bool
 	Network    string
+	Name       string
+	Persistent []string
 	Volumes    []string
 	Devices    []string
 	Args       []string

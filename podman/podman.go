@@ -26,7 +26,7 @@ func InitializePodman(socket string) context.Context {
 	conn, err := bindings.NewConnection(context.Background(), socket)
 
 	if err != nil {
-		fmt.Printf("Can't connect to podman socket at %s. Is it active and running?", socket)
+		fmt.Printf("Can't connect to podman socket at %s. Is it active and running?\n", socket)
 		fmt.Println("Error: ", err)
 		os.Exit(1)
 	}
