@@ -8,7 +8,7 @@ import (
 	"github.com/containers/podman/v4/pkg/bindings"
 )
 
-func defaultSocket() string {
+func DefaultSocket() string {
 	var base string
 	var has_runtime_dir bool
 
@@ -20,7 +20,7 @@ func defaultSocket() string {
 
 func InitializePodman(socket string) context.Context {
 	if socket == "" {
-		socket = defaultSocket()
+		socket = DefaultSocket()
 	}
 
 	conn, err := bindings.NewConnection(context.Background(), socket)

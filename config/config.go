@@ -36,10 +36,16 @@ type ContainerConfigRun struct {
 	Ports      []string
 }
 
+type ContainerConfigResourceLimits struct {
+}
+
 type ContainerConfig struct {
-	Build ContainerConfigBuild
-	Run   ContainerConfigRun
-	Name  string
+	Build          ContainerConfigBuild
+	Run            ContainerConfigRun
+	ResourceLimits ContainerConfigResourceLimits
+	Name           string
+	ConfigFile     string
+	ImageName      string
 }
 
 func getHomeDir() string {
@@ -81,6 +87,8 @@ func LoadConfig(container_name string) ContainerConfig {
 	}
 
 	config.Name = container_name
+	config.ConfigFile = config_file_path
+	config.ImageName = fmt.Sprintf("localhost/sandman/%s", container_name)
 
 	return config
 }

@@ -41,7 +41,7 @@ func Build(socket string, containerConfig config.ContainerConfig, layers bool, v
 
 	// Build the image
 	options.Layers = layers
-	options.Output = fmt.Sprintf("localhost/sandman/%s", containerConfig.Name)
+	options.Output = containerConfig.ImageName
 	buildReport, err := images.Build(conn, []string{dockerFile.Name()}, options)
 
 	if err != nil {

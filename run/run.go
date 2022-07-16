@@ -13,6 +13,7 @@ import (
 	"github.com/containers/podman/v4/pkg/bindings/containers"
 	"github.com/containers/podman/v4/pkg/specgen"
 	"github.com/containers/storage/pkg/idtools"
+	"github.com/containers/storage/types"
 
 	specs "github.com/opencontainers/runtime-spec/specs-go"
 )
@@ -89,17 +90,18 @@ func Start(socket string, containerConfig config.ContainerConfig, keep bool, ver
 }
 
 func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
-	var imageName string = fmt.Sprintf("localhost/sandman/%s", containerConfig.Name)
-	spec := specgen.NewSpecGenerator(imageName, false)
+	spec := specgen.NewSpecGenerator(containerConfig.ImageName, false)
 
 	// Default configuration
 	spec.Terminal = true
 	spec.Stdin = true
 	spec.Remove = true
 	spec.Hostname = strings.Replace(containerConfig.Name, "/", "-", -1)
+	spec.Umask = "0022"
 	spec.Env = make(map[string]string)
 	spec.Labels = make(map[string]string)
-	spec.Labels["sandman_image_name"] = containerConfig.Name
+	spec.Labels["sandman_container_name"] = containerConfig.Name
+	spec.Labels["sandman_image_name"] = containerConfig.ImageName
 
 	if containerConfig.Run.X11 {
 		spec.Env["DISPLAY"] = os.Getenv("DISPLAY")
@@ -158,8 +160,10 @@ func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
 	}
 
 	if containerConfig.Run.Uidmap {
-		spec.User = fmt.Sprint(os.Getuid())
-		spec.IDMappings.UIDMap = append(spec.IDMappings.UIDMap,
+		var idMappingOptions types.IDMappingOptions
+		idMappingOptions.HostUIDMapping = true
+		idMappingOptions.HostGIDMapping = true
+		idMappingOptions.UIDMap = append(idMappingOptions.UIDMap,
 			idtools.IDMap{
 				ContainerID: os.Getuid(),
 				HostID:      0,
@@ -176,10 +180,31 @@ func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
 				Size:        65536 - os.Getuid(),
 			},
 		)
+		idMappingOptions.GIDMap = append(idMappingOptions.GIDMap,
+			idtools.IDMap{
+				ContainerID: os.Getuid(),
+				HostID:      0,
+				Size:        1,
+			},
+			idtools.IDMap{
+				ContainerID: 0,
+				HostID:      1,
+				Size:        os.Getuid(),
+			},
+			idtools.IDMap{
+				ContainerID: os.Getuid() + 1,
+				HostID:      os.Getuid() + 1,
+				Size:        65536 - os.Getuid(),
+			},
+		)
+		spec.IDMappings = &idMappingOptions
+		spec.UserNS.NSMode = specgen.Private
+		spec.User = fmt.Sprint(os.Getuid())
 	}
 
 	if containerConfig.Run.Name != "" {
 		spec.Name = containerConfig.Run.Name
+		spec.Hostname = containerConfig.Run.Name
 	}
 
 	return spec

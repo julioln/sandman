@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/julioln/sandman/build"
+	"github.com/julioln/sandman/podman"
 	"github.com/julioln/sandman/run"
 
 	"github.com/spf13/cobra"
@@ -39,10 +40,10 @@ var (
 	}
 
 	runCmd = &cobra.Command{
-		Use:     "run [container_image]",
-		Short:   "Run a sandboxed container",
-		Long:    "Run a sandboxed container",
-		Aliases: []string{"r"},
+		Use:     "start [container_image]",
+		Short:   "Start a sandboxed container",
+		Long:    "Start a sandboxed container",
+		Aliases: []string{"s", "run", "r"},
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			run.CmdExecute(Socket, Verbose, Keep, args)
@@ -58,8 +59,8 @@ func init() {
 	rootCmd.AddCommand(buildCmd)
 	rootCmd.AddCommand(runCmd)
 
-	rootCmd.PersistentFlags().BoolVarP(&Verbose, "verbose", "v", false, "Verbose mode (debug)")
-	rootCmd.PersistentFlags().StringVarP(&Socket, "socket", "", "", "Specify podman socket")
+	rootCmd.PersistentFlags().BoolVarP(&Verbose, "verbose", "v", false, "Verbose mode (log debug). Defaults to false")
+	rootCmd.PersistentFlags().StringVarP(&Socket, "socket", "", "", fmt.Sprintf("Specify podman socket. Defaults to %s", podman.DefaultSocket()))
 	runCmd.Flags().BoolVarP(&Keep, "keep", "k", false, "Keep container after exit (omit --rm)")
 	buildCmd.Flags().BoolVarP(&Layers, "layers", "l", false, "Use layers for building (default docker behavior)")
 }
