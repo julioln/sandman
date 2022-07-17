@@ -96,7 +96,7 @@ func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
 	spec.Terminal = true
 	spec.Stdin = true
 	spec.Remove = true
-	spec.Hostname = strings.Replace(containerConfig.Name, "/", "-", -1)
+	spec.Hostname = strings.Replace(containerConfig.ImageName, "/", "_", -1)
 	spec.Umask = "0022"
 	spec.Env = make(map[string]string)
 	spec.Labels = make(map[string]string)
@@ -159,44 +159,38 @@ func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
 		})
 	}
 
+	if containerConfig.Run.Fonts {
+		spec.Mounts = append(spec.Mounts, specs.Mount{
+			Destination: "/usr/share/fonts",
+			Source:      "/usr/share/fonts",
+			Type:        "bind",
+			Options:     []string{"ro"},
+		})
+	}
+
 	if containerConfig.Run.Uidmap {
+		idMaps := []idtools.IDMap{
+			{
+				ContainerID: os.Getuid(),
+				HostID:      0,
+				Size:        1,
+			},
+			{
+				ContainerID: 0,
+				HostID:      1,
+				Size:        os.Getuid(),
+			},
+			{
+				ContainerID: os.Getuid() + 1,
+				HostID:      os.Getuid() + 1,
+				Size:        65536 - os.Getuid(),
+			},
+		}
 		var idMappingOptions types.IDMappingOptions
 		idMappingOptions.HostUIDMapping = true
 		idMappingOptions.HostGIDMapping = true
-		idMappingOptions.UIDMap = append(idMappingOptions.UIDMap,
-			idtools.IDMap{
-				ContainerID: os.Getuid(),
-				HostID:      0,
-				Size:        1,
-			},
-			idtools.IDMap{
-				ContainerID: 0,
-				HostID:      1,
-				Size:        os.Getuid(),
-			},
-			idtools.IDMap{
-				ContainerID: os.Getuid() + 1,
-				HostID:      os.Getuid() + 1,
-				Size:        65536 - os.Getuid(),
-			},
-		)
-		idMappingOptions.GIDMap = append(idMappingOptions.GIDMap,
-			idtools.IDMap{
-				ContainerID: os.Getuid(),
-				HostID:      0,
-				Size:        1,
-			},
-			idtools.IDMap{
-				ContainerID: 0,
-				HostID:      1,
-				Size:        os.Getuid(),
-			},
-			idtools.IDMap{
-				ContainerID: os.Getuid() + 1,
-				HostID:      os.Getuid() + 1,
-				Size:        65536 - os.Getuid(),
-			},
-		)
+		idMappingOptions.UIDMap = append(idMappingOptions.UIDMap, idMaps...)
+		idMappingOptions.GIDMap = append(idMappingOptions.GIDMap, idMaps...)
 		spec.IDMappings = &idMappingOptions
 		spec.UserNS.NSMode = specgen.Private
 		spec.User = fmt.Sprint(os.Getuid())
@@ -206,6 +200,44 @@ func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
 		spec.Name = containerConfig.Run.Name
 		spec.Hostname = containerConfig.Run.Name
 	}
+
+	var networkNS specgen.Namespace
+	if containerConfig.Run.Network == "" && !containerConfig.Run.Net {
+		networkNS.NSMode = specgen.None
+	} else if containerConfig.Run.Net {
+		// Backwards compatibility
+		networkNS.NSMode = specgen.Slirp
+	} else if networkNS, err := specgen.ParseNamespace(containerConfig.Run.Network); err != nil {
+		fmt.Println("Error parsing network, defaulting to none: ", err)
+		networkNS.NSMode = specgen.None
+	}
+	spec.NetNS = networkNS
+
+	for _, volume := range containerConfig.Run.Volumes {
+		v := strings.SplitN(volume, ":", 3)
+		spec.Mounts = append(spec.Mounts, specs.Mount{
+			Destination: v[0],
+			Source:      v[1],
+			Type:        "bind",
+			Options:     strings.Split(v[2], ","),
+		})
+	}
+
+	for _, env := range containerConfig.Run.Env {
+		e := strings.SplitN(env, "=", 2)
+		var k string = e[0]
+		var v string
+		if len(e) == 1 {
+			v = os.Getenv(k)
+		} else {
+			v = e[1]
+		}
+		spec.Env[k] = v
+	}
+
+	spec.Devices = append(spec.Devices, containerConfig.Run.Devices...)
+	spec.PortMappings = append(spec.PortMappings, containerConfig.Run.Ports...)
+	spec.Mounts = append(spec.Mounts, containerConfig.Run.Mounts...)
 
 	return spec
 }

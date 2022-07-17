@@ -7,6 +7,8 @@ import (
 	"os/user"
 
 	"github.com/BurntSushi/toml"
+	nettypes "github.com/containers/common/libnetwork/types"
+	specs "github.com/opencontainers/runtime-spec/specs-go"
 )
 
 const SANDMAN_DIR = ".config/sandman"
@@ -26,26 +28,23 @@ type ContainerConfigRun struct {
 	Net        bool
 	Uidmap     bool
 	Home       bool
+	Fonts      bool
 	Network    string
 	Name       string
-	Persistent []string
 	Volumes    []string
-	Devices    []string
-	Args       []string
 	Env        []string
-	Ports      []string
-}
-
-type ContainerConfigResourceLimits struct {
+	Devices    []specs.LinuxDevice
+	Ports      []nettypes.PortMapping
+	Mounts     []specs.Mount
 }
 
 type ContainerConfig struct {
-	Build          ContainerConfigBuild
-	Run            ContainerConfigRun
-	ResourceLimits ContainerConfigResourceLimits
-	Name           string
-	ConfigFile     string
-	ImageName      string
+	Name       string
+	ImageName  string
+	ConfigFile string
+	Build      ContainerConfigBuild
+	Run        ContainerConfigRun
+	Limits     specs.LinuxResources
 }
 
 func getHomeDir() string {
@@ -88,7 +87,7 @@ func LoadConfig(container_name string) ContainerConfig {
 
 	config.Name = container_name
 	config.ConfigFile = config_file_path
-	config.ImageName = fmt.Sprintf("localhost/sandman/%s", container_name)
+	config.ImageName = fmt.Sprintf("sandman/%s", container_name)
 
 	return config
 }
