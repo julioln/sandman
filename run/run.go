@@ -213,6 +213,17 @@ func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
 	}
 	spec.NetNS = networkNS
 
+	if containerConfig.Run.Home {
+		var mountPoint = fmt.Sprintf("%s/%s", config.GetHomeStorageDir(), containerConfig.Name)
+		if err := os.MkdirAll(mountPoint, 0755); err == nil {
+			spec.Mounts = append(spec.Mounts, specs.Mount{
+				Destination: "/home",
+				Source:      mountPoint,
+				Type:        "bind",
+			})
+		}
+	}
+
 	for _, volume := range containerConfig.Run.Volumes {
 		v := strings.SplitN(volume, ":", 3)
 		spec.Mounts = append(spec.Mounts, specs.Mount{

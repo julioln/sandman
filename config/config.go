@@ -12,6 +12,7 @@ import (
 )
 
 const SANDMAN_DIR = ".config/sandman"
+const SANDMAN_LOCAL_STORAGE = ".local/share/sandman"
 
 type ContainerConfigBuild struct {
 	Instructions string
@@ -60,6 +61,10 @@ func getHomeDir() string {
 	}
 
 	return homedir
+}
+
+func GetHomeStorageDir() string {
+	return fmt.Sprintf("%s/%s", getHomeDir(), SANDMAN_LOCAL_STORAGE)
 }
 
 func LoadConfig(container_name string) ContainerConfig {
