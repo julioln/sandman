@@ -103,6 +103,7 @@ func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
 	spec.Labels["sandman_container_name"] = containerConfig.Name
 	spec.Labels["sandman_image_name"] = containerConfig.ImageName
 
+	// X11 Forwarding
 	if containerConfig.Run.X11 {
 		spec.Env["DISPLAY"] = os.Getenv("DISPLAY")
 		spec.Env["XCURSOR_THEME"] = os.Getenv("XCURSOR_THEME")
@@ -114,6 +115,7 @@ func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
 		})
 	}
 
+	// Wayland forwarding
 	if containerConfig.Run.Wayland {
 		spec.Env["WAYLAND_DISPLAY"] = os.Getenv("WAYLAND_DISPLAY")
 		spec.Mounts = append(spec.Mounts, specs.Mount{
@@ -123,16 +125,19 @@ func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
 		})
 	}
 
+	// Expose Direct Render Inteface for GPU acceleration
 	if containerConfig.Run.Dri || containerConfig.Run.Gpu {
 		spec.Devices = append(spec.Devices, specs.LinuxDevice{
 			Path: "/dev/dri",
 		})
 	}
 
+	// Share IPC with host
 	if containerConfig.Run.Ipc {
 		spec.IpcNS.NSMode = specgen.NamespaceMode("host")
 	}
 
+	// Expose pulseaudio client
 	if containerConfig.Run.Pulseaudio {
 		spec.Env["XDG_RUNTIME_DIR"] = os.Getenv("XDG_RUNTIME_DIR")
 		spec.Mounts = append(spec.Mounts,
@@ -150,6 +155,7 @@ func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
 		)
 	}
 
+	// Expose host dbus
 	if containerConfig.Run.Dbus {
 		spec.Env["DBUS_SESSION_BUS_ADDRESS"] = fmt.Sprintf("unix:path=%s/bus", os.Getenv("XDG_RUNTIME_DIR"))
 		spec.Mounts = append(spec.Mounts, specs.Mount{
@@ -159,6 +165,7 @@ func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
 		})
 	}
 
+	// Add host fonts
 	if containerConfig.Run.Fonts {
 		spec.Mounts = append(spec.Mounts, specs.Mount{
 			Destination: "/usr/share/fonts",
@@ -168,6 +175,7 @@ func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
 		})
 	}
 
+	// Create custom user namespace inside container with a mapped uid
 	if containerConfig.Run.Uidmap {
 		idMaps := []idtools.IDMap{
 			{
@@ -196,11 +204,13 @@ func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
 		spec.User = fmt.Sprint(os.Getuid())
 	}
 
+	// Customize container name
 	if containerConfig.Run.Name != "" {
 		spec.Name = containerConfig.Run.Name
 		spec.Hostname = containerConfig.Run.Name
 	}
 
+	// Configure network namespace
 	var networkNS specgen.Namespace
 	if containerConfig.Run.Network == "" && !containerConfig.Run.Net {
 		networkNS.NSMode = specgen.None
@@ -213,6 +223,7 @@ func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
 	}
 	spec.NetNS = networkNS
 
+	// Automatically mount home in a persistent location
 	if containerConfig.Run.Home {
 		var mountPoint = fmt.Sprintf("%s/%s", config.GetHomeStorageDir(), containerConfig.Name)
 		if err := os.MkdirAll(mountPoint, 0755); err == nil {
@@ -224,21 +235,42 @@ func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
 		}
 	}
 
+	// Mount additional volumes
 	for _, volume := range containerConfig.Run.Volumes {
-		v := strings.SplitN(volume, ":", 3)
+		v := strings.Split(volume, ":")
+		var dest string
+		var src string
+		var mountOptions []string
+
+		if len(v) < 2 {
+			// Shorthand
+			src = v[0]
+			dest = v[0]
+		} else {
+			src = v[0]
+			dest = v[1]
+		}
+
+		if len(v) > 2 {
+			// mount -o like arguments
+			mountOptions = strings.Split(v[2], ",")
+		}
+
 		spec.Mounts = append(spec.Mounts, specs.Mount{
-			Destination: v[0],
-			Source:      v[1],
+			Destination: dest,
+			Source:      src,
 			Type:        "bind",
-			Options:     strings.Split(v[2], ","),
+			Options:     mountOptions,
 		})
 	}
 
+	// Export additional environments
 	for _, env := range containerConfig.Run.Env {
-		e := strings.SplitN(env, "=", 2)
+		e := strings.Split(env, "=")
 		var k string = e[0]
 		var v string
 		if len(e) == 1 {
+			// Same behavior as command line
 			v = os.Getenv(k)
 		} else {
 			v = e[1]
@@ -246,8 +278,17 @@ func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
 		spec.Env[k] = v
 	}
 
-	spec.Devices = append(spec.Devices, containerConfig.Run.Devices...)
+	// Mount additional linux devices
+	for _, dev := range containerConfig.Run.Devices {
+		spec.Devices = append(spec.Devices, specs.LinuxDevice{
+			Path: dev,
+		})
+	}
+
+	// Add port mappings
 	spec.PortMappings = append(spec.PortMappings, containerConfig.Run.Ports...)
+
+	// Add raw mountpoints
 	spec.Mounts = append(spec.Mounts, containerConfig.Run.Mounts...)
 
 	return spec

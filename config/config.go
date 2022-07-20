@@ -34,7 +34,7 @@ type ContainerConfigRun struct {
 	Name       string
 	Volumes    []string
 	Env        []string
-	Devices    []specs.LinuxDevice
+	Devices    []string
 	Ports      []nettypes.PortMapping
 	Mounts     []specs.Mount
 }
