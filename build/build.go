@@ -42,6 +42,12 @@ func Build(socket string, containerConfig config.ContainerConfig, layers bool, v
 	// Build the image
 	options.Layers = layers
 	options.Output = containerConfig.ImageName
+	options.ContextDirectory = containerConfig.Build.ContextDirectory
+
+	if verbose {
+		fmt.Printf("Build Options: %#v\n", options)
+	}
+
 	buildReport, err := images.Build(conn, []string{dockerFile.Name()}, options)
 
 	if err != nil {

@@ -15,7 +15,8 @@ const SANDMAN_DIR = ".config/sandman"
 const SANDMAN_LOCAL_STORAGE = ".local/share/sandman"
 
 type ContainerConfigBuild struct {
-	Instructions string
+	Instructions     string
+	ContextDirectory string
 }
 
 type ContainerConfigRun struct {

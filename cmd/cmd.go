@@ -20,7 +20,7 @@ var (
 		Use:     "sandman",
 		Short:   "sandman: Sandboxes with Podman",
 		Long:    "sandman: Build and run sandboxes with Podman",
-		Version: "2.0",
+		Version: "2.0.alpha",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			if Verbose {
 				fmt.Println("Args: ", args)
