@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"strconv"
 
 	"github.com/julioln/sandman/config"
 	"github.com/julioln/sandman/constants"
@@ -16,6 +17,7 @@ import (
 	"github.com/containers/storage/pkg/idtools"
 	"github.com/containers/storage/types"
 
+	nettypes "github.com/containers/common/libnetwork/types"
 	specs "github.com/opencontainers/runtime-spec/specs-go"
 )
 
@@ -225,6 +227,23 @@ func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
 	}
 	spec.NetNS = networkNS
 
+	// Setup port mappings
+	for _, ports := range containerConfig.Run.Ports {
+		p := strings.Split(ports, ":")
+		if len(p) < 2 {
+			fmt.Println("Invalid port configuration, ignoring: ", p)
+			continue
+		}
+
+		containerPort, _ := strconv.Atoi(p[0])
+		hostPort, _ := strconv.Atoi(p[1])
+
+		spec.PortMappings = append(spec.PortMappings, nettypes.PortMapping{
+			ContainerPort: uint16(containerPort),
+			HostPort: uint16(hostPort),
+		})
+	}
+
 	// Automatically mount home in a persistent location
 	if containerConfig.Run.Home {
 		var mountPoint = fmt.Sprintf("%s/%s", config.GetHomeStorageDir(), containerConfig.Name)
@@ -287,11 +306,10 @@ func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
 		})
 	}
 
-	// Add port mappings
-	spec.PortMappings = append(spec.PortMappings, containerConfig.Run.Ports...)
-
-	// Add raw mountpoints
-	spec.Mounts = append(spec.Mounts, containerConfig.Run.Mounts...)
+	// Add raw configuration
+	spec.PortMappings = append(spec.PortMappings, containerConfig.Run.RawPorts...)
+	spec.Mounts = append(spec.Mounts, containerConfig.Run.RawMounts...)
+	spec.Devices = append(spec.Devices, containerConfig.Run.RawDevices...)
 
 	return spec
 }
