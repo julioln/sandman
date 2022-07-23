@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/julioln/sandman/config"
 	"github.com/julioln/sandman/podman"
 
+	"github.com/containers/buildah/define"
 	"github.com/containers/podman/v4/pkg/bindings/images"
 	"github.com/containers/podman/v4/pkg/domain/entities"
 )
@@ -16,6 +18,7 @@ import (
 func Build(socket string, containerConfig config.ContainerConfig, layers bool, verbose bool) {
 	var conn context.Context = podman.InitializePodman(socket)
 	var options entities.BuildOptions
+	var commonBuildOptions define.CommonBuildOptions
 
 	if verbose {
 		fmt.Printf("Container Config: %#v\n", containerConfig)
@@ -23,8 +26,8 @@ func Build(socket string, containerConfig config.ContainerConfig, layers bool, v
 	}
 
 	// Create temporary Dockerfile
-	dockerFile, err := ioutil.TempFile("", fmt.Sprintf("sandman_build_%s", containerConfig.Name))
-	if err != nil {
+	dockerFile, err := ioutil.TempFile("", fmt.Sprintf("sandman_build_%s", strings.Replace(containerConfig.Name, "/", "_", -1)))
+		if err != nil {
 		fmt.Println("Failed to write to temp dockerfile")
 		fmt.Println("Error: ", err)
 		os.Exit(1)
@@ -39,10 +42,14 @@ func Build(socket string, containerConfig config.ContainerConfig, layers bool, v
 		os.Exit(1)
 	}
 
-	// Build the image
+	// Image paramenters
 	options.Layers = layers
 	options.Output = containerConfig.ImageName
 	options.ContextDirectory = containerConfig.Build.ContextDirectory
+
+	// Set building parameters, run with low cpu weight for compilation tasks
+	commonBuildOptions.CPUShares = 1
+	options.CommonBuildOpts = &commonBuildOptions
 
 	if verbose {
 		fmt.Printf("Build Options: %#v\n", options)
