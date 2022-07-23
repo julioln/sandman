@@ -6,13 +6,12 @@ import (
 	"os"
 	"os/user"
 
+	"github.com/julioln/sandman/constants"
+
 	"github.com/BurntSushi/toml"
 	nettypes "github.com/containers/common/libnetwork/types"
 	specs "github.com/opencontainers/runtime-spec/specs-go"
 )
-
-const SANDMAN_DIR = ".config/sandman"
-const SANDMAN_LOCAL_STORAGE = ".local/share/sandman"
 
 type ContainerConfigBuild struct {
 	Instructions     string
@@ -65,7 +64,7 @@ func getHomeDir() string {
 }
 
 func GetHomeStorageDir() string {
-	return fmt.Sprintf("%s/%s", getHomeDir(), SANDMAN_LOCAL_STORAGE)
+	return fmt.Sprintf("%s/%s", getHomeDir(), constants.SANDMAN_LOCAL_STORAGE)
 }
 
 func LoadConfig(container_name string) ContainerConfig {
@@ -73,7 +72,7 @@ func LoadConfig(container_name string) ContainerConfig {
 	var config_file_content []byte
 
 	var homedir string = getHomeDir()
-	var config_file_path string = fmt.Sprintf("%s/%s/%s.toml", homedir, SANDMAN_DIR, container_name)
+	var config_file_path string = fmt.Sprintf("%s/%s/%s.toml", homedir, constants.SANDMAN_DIR, container_name)
 
 	config_file_content, err := ioutil.ReadFile(config_file_path)
 

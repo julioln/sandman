@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/julioln/sandman/config"
+	"github.com/julioln/sandman/constants"
 	"github.com/julioln/sandman/podman"
 
 	"github.com/containers/buildah/define"
@@ -46,6 +47,11 @@ func Build(socket string, containerConfig config.ContainerConfig, layers bool, v
 	options.Layers = layers
 	options.Output = containerConfig.ImageName
 	options.ContextDirectory = containerConfig.Build.ContextDirectory
+	options.Labels = append(options.Labels,
+		fmt.Sprintf("sandman_version=%s", constants.VERSION),
+		fmt.Sprintf("sandman_image_name=%s", containerConfig.ImageName),
+		fmt.Sprintf("sandman_container_name=%s", containerConfig.Name),
+	)
 
 	// Set building parameters, run with low cpu weight for compilation tasks
 	commonBuildOptions.CPUShares = 1

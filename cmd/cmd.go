@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/julioln/sandman/build"
+	"github.com/julioln/sandman/constants"
 	"github.com/julioln/sandman/podman"
 	"github.com/julioln/sandman/run"
 
@@ -20,7 +21,7 @@ var (
 		Use:     "sandman",
 		Short:   "sandman: Sandboxes with Podman",
 		Long:    "sandman: Build and run sandboxes with Podman",
-		Version: "2.0.alpha",
+		Version: constants.VERSION,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			if Verbose {
 				fmt.Println("Args: ", args)
