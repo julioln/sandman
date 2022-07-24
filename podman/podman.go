@@ -33,3 +33,8 @@ func InitializePodman(socket string) context.Context {
 
 	return conn
 }
+
+func TestConnection(socket string) {
+	InitializePodman(socket)
+	fmt.Println("Succesfully connected to Podman socket")
+}

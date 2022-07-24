@@ -61,6 +61,15 @@ var (
 			fmt.Print(config.Scaffold())
 		},
 	}
+
+	testCmd = &cobra.Command{
+		Use:     "test",
+		Short:   "Tests the connection to the socket",
+		Long:    "Tests the connection to the socket",
+		Run: func(cmd *cobra.Command, args []string) {
+			podman.TestConnection(Socket)
+		},
+	}
 )
 
 func Execute() error {
@@ -71,6 +80,7 @@ func init() {
 	rootCmd.AddCommand(buildCmd)
 	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(scaffoldCmd)
+	rootCmd.AddCommand(testCmd)
 
 	rootCmd.PersistentFlags().BoolVarP(&Verbose, "verbose", "v", false, "Verbose mode (log debug). Defaults to false")
 	rootCmd.PersistentFlags().StringVarP(&Socket, "socket", "", "", fmt.Sprintf("Specify podman socket. Defaults to %s", podman.DefaultSocket()))
