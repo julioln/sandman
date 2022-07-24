@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/julioln/sandman/build"
+	"github.com/julioln/sandman/config"
 	"github.com/julioln/sandman/constants"
 	"github.com/julioln/sandman/podman"
 	"github.com/julioln/sandman/run"
@@ -50,6 +51,16 @@ var (
 			run.CmdExecute(Socket, Verbose, Keep, args)
 		},
 	}
+
+	scaffoldCmd = &cobra.Command{
+		Use:     "sample",
+		Short:   "Prints a sample configuration file",
+		Long:    "Print a sample configuration file",
+		Aliases: []string{"scaffold"},
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Print(config.Scaffold())
+		},
+	}
 )
 
 func Execute() error {
@@ -59,6 +70,7 @@ func Execute() error {
 func init() {
 	rootCmd.AddCommand(buildCmd)
 	rootCmd.AddCommand(runCmd)
+	rootCmd.AddCommand(scaffoldCmd)
 
 	rootCmd.PersistentFlags().BoolVarP(&Verbose, "verbose", "v", false, "Verbose mode (log debug). Defaults to false")
 	rootCmd.PersistentFlags().StringVarP(&Socket, "socket", "", "", fmt.Sprintf("Specify podman socket. Defaults to %s", podman.DefaultSocket()))

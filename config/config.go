@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -42,13 +43,17 @@ type ContainerConfigRun struct {
 	RawDevices []specs.LinuxDevice
 }
 
+type ContainerConfigLimits struct {
+	LinuxResources specs.LinuxResources
+}
+
 type ContainerConfig struct {
 	Name       string
 	ImageName  string
 	ConfigFile string
 	Build      ContainerConfigBuild
 	Run        ContainerConfigRun
-	Limits     specs.LinuxResources
+	Limits     ContainerConfigLimits
 }
 
 func getHomeDir() string {
@@ -98,4 +103,21 @@ func LoadConfig(container_name string) ContainerConfig {
 	config.ImageName = fmt.Sprintf("sandman/%s", container_name)
 
 	return config
+}
+
+func Scaffold() string {
+	buf := new(bytes.Buffer)
+	err := toml.NewEncoder(buf).Encode(map[string]interface{}{
+		"Build":  new(ContainerConfigBuild),
+		"Run":    new(ContainerConfigRun),
+		"Limits": new(ContainerConfigLimits),
+	})
+
+	if err != nil {
+		fmt.Printf("Failed to encode TOML")
+		fmt.Println("Error: ", err)
+		os.Exit(1)
+	}
+
+	return buf.String()
 }

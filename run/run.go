@@ -324,7 +324,7 @@ func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
 	spec.Devices = append(spec.Devices, containerConfig.Run.RawDevices...)
 
 	// Apply limits
-	spec.ResourceLimits = &containerConfig.Limits
+	spec.ResourceLimits = &containerConfig.Limits.LinuxResources
 
 	return spec
 }
