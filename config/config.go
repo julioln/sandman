@@ -25,6 +25,7 @@ type ContainerConfigRun struct {
 	Ipc        bool
 	Gpu        bool
 	Pulseaudio bool
+	Pipewire   bool
 	Dbus       bool
 	Net        bool
 	Uidmap     bool

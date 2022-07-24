@@ -159,6 +159,18 @@ func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
 		)
 	}
 
+	// Pipewire client
+	if containerConfig.Run.Pipewire {
+		spec.Env["XDG_RUNTIME_DIR"] = os.Getenv("XDG_RUNTIME_DIR")
+		spec.Mounts = append(spec.Mounts,
+			specs.Mount{
+				Destination: fmt.Sprintf("%s/pipewire-0", os.Getenv("XDG_RUNTIME_DIR")),
+				Source:      fmt.Sprintf("%s/pipewire-0", os.Getenv("XDG_RUNTIME_DIR")),
+				Type:        "bind",
+			},
+		)
+	}
+
 	// Expose host dbus
 	if containerConfig.Run.Dbus {
 		spec.Env["DBUS_SESSION_BUS_ADDRESS"] = fmt.Sprintf("unix:path=%s/bus", os.Getenv("XDG_RUNTIME_DIR"))
@@ -310,6 +322,9 @@ func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
 	spec.PortMappings = append(spec.PortMappings, containerConfig.Run.RawPorts...)
 	spec.Mounts = append(spec.Mounts, containerConfig.Run.RawMounts...)
 	spec.Devices = append(spec.Devices, containerConfig.Run.RawDevices...)
+
+	// Apply limits
+	spec.ResourceLimits = &containerConfig.Limits
 
 	return spec
 }
