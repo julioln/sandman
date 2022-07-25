@@ -54,7 +54,8 @@ func Build(socket string, containerConfig config.ContainerConfig, layers bool, v
 	)
 
 	// Set building parameters, run with low cpu weight for compilation tasks
-	commonBuildOptions.CPUShares = 1
+	// TODO: Find out a reliable way to set weight or niceness
+	//commonBuildOptions.CPUShares = 1
 	options.CommonBuildOpts = &commonBuildOptions
 
 	if verbose {
