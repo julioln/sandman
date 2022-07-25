@@ -233,7 +233,7 @@ func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
 	} else if containerConfig.Run.Net {
 		// Backwards compatibility
 		networkNS.NSMode = specgen.Slirp
-	} else if networkNS, err := specgen.ParseNamespace(containerConfig.Run.Network); err != nil {
+	} else if networkNS, _, _, err := specgen.ParseNetworkFlag([]string{containerConfig.Run.Network}); err != nil {
 		fmt.Println("Error parsing network, defaulting to none: ", err)
 		networkNS.NSMode = specgen.None
 	}
