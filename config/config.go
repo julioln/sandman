@@ -38,6 +38,7 @@ type ContainerConfigRun struct {
 	Env        []string
 	Devices    []string
 	Ports      []string
+	UsbDevices []string
 	RawMounts  []specs.Mount
 	RawPorts   []nettypes.PortMapping
 	RawDevices []specs.LinuxDevice

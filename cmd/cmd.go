@@ -63,9 +63,9 @@ var (
 	}
 
 	testCmd = &cobra.Command{
-		Use:     "test",
-		Short:   "Tests the connection to the socket",
-		Long:    "Tests the connection to the socket",
+		Use:   "test",
+		Short: "Tests the connection to the socket",
+		Long:  "Tests the connection to the socket",
 		Run: func(cmd *cobra.Command, args []string) {
 			podman.TestConnection(Socket)
 		},

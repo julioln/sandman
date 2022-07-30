@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 	"strconv"
+	"strings"
 
 	"github.com/julioln/sandman/config"
 	"github.com/julioln/sandman/constants"
@@ -252,7 +252,7 @@ func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
 
 		spec.PortMappings = append(spec.PortMappings, nettypes.PortMapping{
 			ContainerPort: uint16(containerPort),
-			HostPort: uint16(hostPort),
+			HostPort:      uint16(hostPort),
 		})
 	}
 
@@ -264,6 +264,27 @@ func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
 				Destination: "/home",
 				Source:      mountPoint,
 				Type:        "bind",
+			})
+		}
+	}
+
+	// Add usb devices
+	for _, usbDev := range containerConfig.Run.UsbDevices {
+		u := strings.Split(usbDev, ":")
+		var vendor string
+		var product string
+		if len(u) < 2 {
+			vendor = u[0]
+			// Catch all
+			product = ""
+		} else {
+			vendor = u[0]
+			product = u[1]
+		}
+
+		for _, devicePath := range UsbDevicePaths(vendor, product) {
+			spec.Devices = append(spec.Devices, specs.LinuxDevice{
+				Path: devicePath,
 			})
 		}
 	}
