@@ -45,7 +45,7 @@ var (
 		Use:     "start [container_image]",
 		Short:   "Start a sandboxed container",
 		Long:    "Start a sandboxed container",
-		Aliases: []string{"s", "run", "r"},
+		Aliases: []string{"spawn", "s", "run", "r"},
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			run.CmdExecute(Socket, Verbose, Keep, args)

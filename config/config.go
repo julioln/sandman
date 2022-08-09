@@ -45,8 +45,8 @@ type ContainerConfigRun struct {
 }
 
 type ContainerConfigLimits struct {
-	// TODO This isn't working
-	LinuxResources specs.LinuxResources
+	CPU    specs.LinuxCPU
+	Memory specs.LinuxMemory
 }
 
 type ContainerConfig struct {
