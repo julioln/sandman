@@ -28,6 +28,10 @@ The TOML files with the container configuration are stored in `.config/sandman` 
 
 The optional local storage is stored in `.local/share/sandman` inside your home.
 
+## Installing
+
+A Makefile is provided with basic commands. You can use `make all` to download dependencies, test everything, compile and install.
+
 ## Usage
 
 `sandman <action> <container-name>`
@@ -38,7 +42,7 @@ The build command prepares a local image of the container using `buildah`, to be
 
 ### Start or Run
 
-The start or run command spawns the container from the local image
+The start or run command spawns the container from the local image. The container will not be attached, auto-attach is being implemented. If you need to attach you can run `podman attach --latest`
 
 ### Test
 
@@ -46,7 +50,7 @@ Validates the connection to the Podman socket
 
 ### Sample
 
-Outputs a scaffold of a container TOML file
+Outputs a simplified scaffold of a container TOML file. See full example below
 
 ### Help
 
@@ -69,75 +73,82 @@ RUN pacman -Syu xorg-xclock --noconfirm
 CMD "/usr/bin/xclock"
 '''
 
+# Any additional image names
+AdditionalImageNames = ["sandman/xclock:2.0.alpha"]
+
+[Build.Limits]
+# Change limits for build
+Ulimit = ["nofile=4096"]
+
 # Running parameters
 [Run]
 
 # Allow x11 forwarding
-x11 = true
+X11 = true
 
 # Allow Wayland forwarding
-wayland = false
+Wayland = false
 
 # Allow GPU acceleration
-dri = false
-gpu = false
+Dri = false
+Gpu = false
 
 # Allow host IPC
-ipc = false
+Ipc = false
 
 # Allow pulseaudio forwarding
-pulseaudio = false
+Pulseaudio = false
 
 # Allow pipewire forwarding
-pipewire = false
+Pipewire = false
 
 # Allow dbus forwarding
-dbus = false
+Dbus = false
 
 # Setup uids, requires /etc/subuid and /etc/subgid to be setup
-uidmap = false
+Uidmap = false
 
 # Set to true if you need automatic data persistence. Will mount the /home inside the container to .local/share/sandman/xclock
-home = false
+Home = false
 
 # Deprecated option, implies in network = slirp4netns
-net = false
+Net = false
 
 # Any networking namespace modes allowed by podman-run
-network = "none"
+Network = "none"
 
 # If you want fonts to be mounted RO
-fonts = true
+Fonts = true
 
 # An optional name, if blank will use the default randomized name
-name = "xclock"
+Name = "xclock"
 
 # A list of usb device ids (vendor:product) to be mounted in the container
-usbDevices = []
+UsbDevices = []
 
-volumes = []
-devices = []
-env = []
-ports = []
+Volumes = []
+Devices = []
+Env = []
+Ports = []
 
 # If you need to share something from the host OS
-# volumes = ['/etc/locale:/etc/locale:ro]
+# Volumes = ['/etc/locale:/etc/locale:ro']
 
 # If you need to access a device
-# devices = ['/dev/video0']
+# Devices = ['/dev/video0']
 
 # If you need special environment variables
-# env = ['ENV=test']
+# Env = ['ENV=test']
 
 # If you need to expose ports
-# ports = ['8080:8080']
+# Ports = ['8080:8080']
 
-[Limits]
-# Still being implemented
+[Run.Limits]
+# Still being implemented. See full list in config/config.go
 ```
 
 Build it with `sandman build xclock`
 
-Spawn it with `sandman run xclock`
+Spawn it with `sandman start xclock`
 
 For full reference see `config/config.go`

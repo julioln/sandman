@@ -47,14 +47,15 @@ func Build(socket string, containerConfig config.ContainerConfig, layers bool, v
 	options.Layers = layers
 	options.Output = containerConfig.ImageName
 	options.ContextDirectory = containerConfig.Build.ContextDirectory
+	options.AdditionalTags = append(options.AdditionalTags, containerConfig.Build.AdditionalImageNames...)
 	options.Labels = append(options.Labels,
 		fmt.Sprintf("sandman_version=%s", constants.VERSION),
 		fmt.Sprintf("sandman_image_name=%s", containerConfig.ImageName),
 		fmt.Sprintf("sandman_container_name=%s", containerConfig.Name),
 	)
 
-	// Set building parameters, run with low cpu weight for compilation tasks
-	// TODO: Find out a reliable way to set weight or niceness
+	// Set building parameters
+	commonBuildOptions.Ulimit = containerConfig.Build.Limits.Ulimit
 	options.CommonBuildOpts = &commonBuildOptions
 
 	if verbose {

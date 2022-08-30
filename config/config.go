@@ -15,8 +15,14 @@ import (
 )
 
 type ContainerConfigBuild struct {
-	Instructions     string
-	ContextDirectory string
+	Instructions         string
+	ContextDirectory     string
+	AdditionalImageNames []string
+	Limits               ContainerConfigBuildLimits
+}
+
+type ContainerConfigBuildLimits struct {
+	Ulimit []string
 }
 
 type ContainerConfigRun struct {
@@ -42,11 +48,14 @@ type ContainerConfigRun struct {
 	RawMounts  []specs.Mount
 	RawPorts   []nettypes.PortMapping
 	RawDevices []specs.LinuxDevice
+	Limits     ContainerConfigRunLimits
 }
 
-type ContainerConfigLimits struct {
-	CPU    specs.LinuxCPU
-	Memory specs.LinuxMemory
+type ContainerConfigRunLimits struct {
+	CPU        specs.LinuxCPU
+	Memory     specs.LinuxMemory
+	Rlimits    []specs.POSIXRlimit
+	CgroupConf map[string]string
 }
 
 type ContainerConfig struct {
@@ -55,7 +64,6 @@ type ContainerConfig struct {
 	ConfigFile string
 	Build      ContainerConfigBuild
 	Run        ContainerConfigRun
-	Limits     ContainerConfigLimits
 }
 
 func getHomeDir() string {
@@ -110,9 +118,8 @@ func LoadConfig(container_name string) ContainerConfig {
 func Scaffold() string {
 	buf := new(bytes.Buffer)
 	err := toml.NewEncoder(buf).Encode(map[string]interface{}{
-		"Build":  new(ContainerConfigBuild),
-		"Run":    new(ContainerConfigRun),
-		"Limits": new(ContainerConfigLimits),
+		"Build": new(ContainerConfigBuild),
+		"Run":   new(ContainerConfigRun),
 	})
 
 	if err != nil {
