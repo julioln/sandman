@@ -67,10 +67,7 @@ func Build(socket string, containerConfig config.ContainerConfig, layers bool, v
 	if err != nil {
 		fmt.Println("Failed to build image")
 		fmt.Println("Error: ", err)
-		os.Exit(1)
-	}
-
-	if verbose {
+	} else if verbose {
 		fmt.Println("Build report: ", *buildReport)
 	}
 }
