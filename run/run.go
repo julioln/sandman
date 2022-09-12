@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/julioln/sandman/config"
@@ -14,11 +13,30 @@ import (
 	"github.com/containers/podman/v4/libpod/define"
 	"github.com/containers/podman/v4/pkg/bindings/containers"
 	"github.com/containers/podman/v4/pkg/specgen"
-	"github.com/containers/storage/pkg/idtools"
-	"github.com/containers/storage/types"
+)
 
-	nettypes "github.com/containers/common/libnetwork/types"
-	specs "github.com/opencontainers/runtime-spec/specs-go"
+var (
+	configFunctions = []func(spec *specgen.SpecGenerator, config config.ContainerConfig){
+		Dbus,
+		Devices,
+		Env,
+		Fonts,
+		Gpu,
+		Home,
+		Ipc,
+		Limits,
+		Name,
+		Network,
+		Pipewire,
+		Ports,
+		Pulseaudio,
+		Raw,
+		Uidmap,
+		Usb,
+		Volumes,
+		Wayland,
+		X11,
+	}
 )
 
 func Start(socket string, containerConfig config.ContainerConfig, keep bool, verbose bool, runCmd []string) {
@@ -73,23 +91,6 @@ func Start(socket string, containerConfig config.ContainerConfig, keep bool, ver
 	}
 
 	// TODO: Work on auto-attaching
-
-	//var attachOptions containers.AttachOptions
-	//var attachReady chan bool
-	//attachReady <- true
-	//err = containers.Attach(
-	//	conn,
-	//	container.ID,
-	//	io.Reader(os.Stdin),
-	//	io.Writer(os.Stdout),
-	//	io.Writer(os.Stderr),
-	//	attachReady,
-	//	&attachOptions,
-	//)
-	//if err != nil {
-	//	fmt.Println(err)
-	//	os.Exit(1)
-	//}
 }
 
 func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
@@ -107,253 +108,10 @@ func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
 	spec.Labels["sandman_image_name"] = containerConfig.ImageName
 	spec.Labels["sandman_version"] = constants.VERSION
 
-	// X11 Forwarding
-	if containerConfig.Run.X11 {
-		spec.Env["DISPLAY"] = os.Getenv("DISPLAY")
-		spec.Env["XCURSOR_THEME"] = os.Getenv("XCURSOR_THEME")
-		spec.Env["XCURSOR_SIZE"] = os.Getenv("XCURSOR_SIZE")
-		spec.Mounts = append(spec.Mounts, specs.Mount{
-			Destination: "/tmp/.X11-unix",
-			Source:      "/tmp/.X11-unix",
-			Type:        "bind",
-		})
+	// Apply all configurators
+	for _, f := range configFunctions {
+		f(spec, containerConfig)
 	}
-
-	// Wayland forwarding
-	if containerConfig.Run.Wayland {
-		spec.Env["WAYLAND_DISPLAY"] = os.Getenv("WAYLAND_DISPLAY")
-		spec.Mounts = append(spec.Mounts, specs.Mount{
-			Destination: fmt.Sprintf("%s/%s", os.Getenv("XDG_RUNTIME_DIR"), os.Getenv("WAYLAND_DISPLAY")),
-			Source:      fmt.Sprintf("%s/%s", os.Getenv("XDG_RUNTIME_DIR"), os.Getenv("WAYLAND_DISPLAY")),
-			Type:        "bind",
-		})
-	}
-
-	// Expose Direct Render Inteface for GPU acceleration
-	if containerConfig.Run.Dri || containerConfig.Run.Gpu {
-		spec.Devices = append(spec.Devices, specs.LinuxDevice{
-			Path: "/dev/dri",
-		})
-	}
-
-	// Share IPC with host
-	if containerConfig.Run.Ipc {
-		spec.IpcNS.NSMode = specgen.NamespaceMode("host")
-	}
-
-	// Expose pulseaudio client
-	if containerConfig.Run.Pulseaudio {
-		spec.Env["XDG_RUNTIME_DIR"] = os.Getenv("XDG_RUNTIME_DIR")
-		spec.Mounts = append(spec.Mounts,
-			specs.Mount{
-				Destination: "/etc/machine-id",
-				Source:      "/etc/machine-id",
-				Type:        "bind",
-				Options:     []string{"ro"},
-			},
-			specs.Mount{
-				Destination: fmt.Sprintf("%s/pulse/native", os.Getenv("XDG_RUNTIME_DIR")),
-				Source:      fmt.Sprintf("%s/pulse/native", os.Getenv("XDG_RUNTIME_DIR")),
-				Type:        "bind",
-			},
-		)
-	}
-
-	// Pipewire client
-	if containerConfig.Run.Pipewire {
-		spec.Env["XDG_RUNTIME_DIR"] = os.Getenv("XDG_RUNTIME_DIR")
-		spec.Mounts = append(spec.Mounts,
-			specs.Mount{
-				Destination: fmt.Sprintf("%s/pipewire-0", os.Getenv("XDG_RUNTIME_DIR")),
-				Source:      fmt.Sprintf("%s/pipewire-0", os.Getenv("XDG_RUNTIME_DIR")),
-				Type:        "bind",
-			},
-		)
-	}
-
-	// Expose host dbus
-	if containerConfig.Run.Dbus {
-		spec.Env["DBUS_SESSION_BUS_ADDRESS"] = fmt.Sprintf("unix:path=%s/bus", os.Getenv("XDG_RUNTIME_DIR"))
-		spec.Mounts = append(spec.Mounts, specs.Mount{
-			Destination: fmt.Sprintf("%s/bus", os.Getenv("XDG_RUNTIME_DIR")),
-			Source:      fmt.Sprintf("%s/bus", os.Getenv("XDG_RUNTIME_DIR")),
-			Type:        "bind",
-		})
-	}
-
-	// Add host fonts
-	if containerConfig.Run.Fonts {
-		spec.Mounts = append(spec.Mounts, specs.Mount{
-			Destination: "/usr/share/fonts",
-			Source:      "/usr/share/fonts",
-			Type:        "bind",
-			Options:     []string{"ro"},
-		})
-	}
-
-	// Create custom user namespace inside container with a mapped uid
-	if containerConfig.Run.Uidmap {
-		idMaps := []idtools.IDMap{
-			{
-				ContainerID: os.Getuid(),
-				HostID:      0,
-				Size:        1,
-			},
-			{
-				ContainerID: 0,
-				HostID:      1,
-				Size:        os.Getuid(),
-			},
-			{
-				ContainerID: os.Getuid() + 1,
-				HostID:      os.Getuid() + 1,
-				Size:        65536 - os.Getuid(),
-			},
-		}
-		var idMappingOptions types.IDMappingOptions
-		idMappingOptions.HostUIDMapping = true
-		idMappingOptions.HostGIDMapping = true
-		idMappingOptions.UIDMap = append(idMappingOptions.UIDMap, idMaps...)
-		idMappingOptions.GIDMap = append(idMappingOptions.GIDMap, idMaps...)
-		spec.IDMappings = &idMappingOptions
-		spec.UserNS.NSMode = specgen.Private
-		spec.User = fmt.Sprint(os.Getuid())
-	}
-
-	// Customize container name
-	if containerConfig.Run.Name != "" {
-		spec.Name = containerConfig.Run.Name
-		spec.Hostname = containerConfig.Run.Name
-	}
-
-	// Configure network namespace
-	var networkNS specgen.Namespace
-	if containerConfig.Run.Network == "" && !containerConfig.Run.Net {
-		networkNS.NSMode = specgen.None
-	} else if containerConfig.Run.Net {
-		// Backwards compatibility
-		networkNS.NSMode = specgen.Slirp
-	} else {
-		var err error
-		if networkNS, _, _, err = specgen.ParseNetworkFlag([]string{containerConfig.Run.Network}); err != nil {
-			fmt.Println("Error parsing network, defaulting to none: ", err)
-			networkNS.NSMode = specgen.None
-		}
-	}
-	spec.NetNS = networkNS
-
-	// Setup port mappings
-	for _, ports := range containerConfig.Run.Ports {
-		p := strings.Split(ports, ":")
-		if len(p) < 2 {
-			fmt.Println("Invalid port configuration, ignoring: ", p)
-			continue
-		}
-
-		containerPort, _ := strconv.Atoi(p[0])
-		hostPort, _ := strconv.Atoi(p[1])
-
-		spec.PortMappings = append(spec.PortMappings, nettypes.PortMapping{
-			ContainerPort: uint16(containerPort),
-			HostPort:      uint16(hostPort),
-		})
-	}
-
-	// Automatically mount home in a persistent location
-	if containerConfig.Run.Home {
-		var mountPoint = fmt.Sprintf("%s/%s", config.GetHomeStorageDir(), containerConfig.Name)
-		if err := os.MkdirAll(mountPoint, 0755); err == nil {
-			spec.Mounts = append(spec.Mounts, specs.Mount{
-				Destination: "/home",
-				Source:      mountPoint,
-				Type:        "bind",
-			})
-		}
-	}
-
-	// Add usb devices
-	for _, usbDev := range containerConfig.Run.UsbDevices {
-		u := strings.Split(usbDev, ":")
-		var vendor string
-		var product string
-		if len(u) < 2 {
-			vendor = u[0]
-			// Catch all
-			product = ""
-		} else {
-			vendor = u[0]
-			product = u[1]
-		}
-
-		for _, devicePath := range UsbDevicePaths(vendor, product) {
-			spec.Devices = append(spec.Devices, specs.LinuxDevice{
-				Path: devicePath,
-			})
-		}
-	}
-
-	// Mount additional volumes
-	for _, volume := range containerConfig.Run.Volumes {
-		v := strings.Split(volume, ":")
-		var dest string
-		var src string
-		var mountOptions []string
-
-		if len(v) < 2 {
-			// Shorthand
-			src = v[0]
-			dest = v[0]
-		} else {
-			src = v[0]
-			dest = v[1]
-		}
-
-		if len(v) > 2 {
-			// mount -o like arguments
-			mountOptions = strings.Split(v[2], ",")
-		}
-
-		spec.Mounts = append(spec.Mounts, specs.Mount{
-			Destination: dest,
-			Source:      src,
-			Type:        "bind",
-			Options:     mountOptions,
-		})
-	}
-
-	// Export additional environments
-	for _, env := range containerConfig.Run.Env {
-		e := strings.Split(env, "=")
-		var k string = e[0]
-		var v string
-		if len(e) == 1 {
-			// Same behavior as command line
-			v = os.Getenv(k)
-		} else {
-			v = e[1]
-		}
-		spec.Env[k] = v
-	}
-
-	// Mount additional linux devices
-	for _, dev := range containerConfig.Run.Devices {
-		spec.Devices = append(spec.Devices, specs.LinuxDevice{
-			Path: dev,
-		})
-	}
-
-	// Add raw configuration
-	spec.PortMappings = append(spec.PortMappings, containerConfig.Run.RawPorts...)
-	spec.Mounts = append(spec.Mounts, containerConfig.Run.RawMounts...)
-	spec.Devices = append(spec.Devices, containerConfig.Run.RawDevices...)
-
-	// Apply limits
-	var limits specs.LinuxResources
-	limits.CPU = &containerConfig.Run.Limits.CPU
-	limits.Memory = &containerConfig.Run.Limits.Memory
-	spec.ResourceLimits = &limits
-	spec.Rlimits = containerConfig.Run.Limits.Rlimits
-	spec.CgroupConf = containerConfig.Run.Limits.CgroupConf
 
 	return spec
 }
