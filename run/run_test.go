@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 
+	nettypes "github.com/containers/common/libnetwork/types"
 	"github.com/containers/podman/v4/pkg/specgen"
 	"github.com/julioln/sandman/config"
 	"github.com/julioln/sandman/constants"
@@ -18,6 +19,10 @@ func compareMountPoints(m1 specs.Mount, m2 specs.Mount) bool {
 
 func compareDevices(d1 specs.LinuxDevice, d2 specs.LinuxDevice) bool {
 	return reflect.DeepEqual(d1, d2)
+}
+
+func comparePorts(p1 nettypes.PortMapping, p2 nettypes.PortMapping) bool {
+	return reflect.DeepEqual(p1, p2)
 }
 
 func testMaps(t *testing.T, expected map[string]string, existing map[string]string) {
@@ -55,6 +60,21 @@ func testDevices(t *testing.T, spec *specgen.SpecGenerator, devices []specs.Linu
 		}
 		if !found {
 			t.Errorf("expected device but couldn't find it: %#v", expected_device)
+		}
+	}
+}
+
+func testPorts(t *testing.T, spec *specgen.SpecGenerator, ports []nettypes.PortMapping) {
+	for _, expected_port := range ports {
+		found := false
+		for _, existing_port := range spec.PortMappings {
+			if comparePorts(expected_port, existing_port) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected port but couldn't find it: %#v", expected_port)
 		}
 	}
 }
@@ -218,6 +238,19 @@ func TestPipewire(t *testing.T) {
 	testMountPoints(t, spec, mountPoints)
 }
 
+func TestPorts(t *testing.T) {
+	testConfig := new(config.ContainerConfig)
+	testConfig.Run.Ports = []string{"3000:4000", "invalid"}
+	spec := CreateSpec(*testConfig)
+	ports := []nettypes.PortMapping{
+		{
+			ContainerPort: 3000,
+			HostPort:      4000,
+		},
+	}
+	testPorts(t, spec, ports)
+}
+
 func TestPulseaudio(t *testing.T) {
 	testConfig := new(config.ContainerConfig)
 	testConfig.Run.Pulseaudio = true
@@ -278,6 +311,25 @@ func TestNetwork(t *testing.T) {
 	ns.NSMode = specgen.Bridge
 	if spec.NetNS.NSMode != ns.NSMode {
 		t.Errorf("Network namespace incorrect, expected %#v, got %#v", ns.NSMode, spec.NetNS.NSMode)
+	}
+}
+
+func TestUidmap(t *testing.T) {
+	testConfig := new(config.ContainerConfig)
+	testConfig.Run.Uidmap = true
+	spec := CreateSpec(*testConfig)
+
+	if spec.UserNS.NSMode != specgen.Private {
+		t.Errorf("User namespace incorrect, expected %#v, got %#v", specgen.Private, spec.UserNS.NSMode)
+	}
+	if !spec.IDMappings.HostGIDMapping {
+		t.Errorf("Host GID mapping incorrect, expected %#v, got %#v", true, spec.IDMappings.HostGIDMapping)
+	}
+	if !spec.IDMappings.HostUIDMapping {
+		t.Errorf("Host UID mapping incorrect, expected %#v, got %#v", true, spec.IDMappings.HostUIDMapping)
+	}
+	if spec.User != fmt.Sprint(os.Getuid()) {
+		t.Errorf("User incorrect, expected %#v, got %#v", os.Getuid(), spec.User)
 	}
 }
 
