@@ -42,7 +42,7 @@ The build command prepares a local image of the container using `buildah`, to be
 
 ### Start or Run
 
-The start or run command spawns the container from the local image. The container will not be attached, auto-attach is being implemented. If you need to attach you can run `podman attach --latest`
+The start or run command spawns the container from the local image. Starting spawns a dettached container, Run will auto-attach.
 
 ### Test
 

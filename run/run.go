@@ -39,7 +39,7 @@ var (
 	}
 )
 
-func Start(socket string, containerConfig config.ContainerConfig, keep bool, verbose bool, runCmd []string) {
+func Start(socket string, containerConfig config.ContainerConfig, attach bool, keep bool, verbose bool, runCmd []string) {
 	var conn context.Context = podman.InitializePodman(socket)
 	var spec = CreateSpec(containerConfig)
 
@@ -90,7 +90,13 @@ func Start(socket string, containerConfig config.ContainerConfig, keep bool, ver
 		}
 	}
 
-	// TODO: Work on auto-attaching
+	if attach {
+		attachOptions := new(containers.AttachOptions)
+		err = containers.Attach(conn, container.ID, os.Stdin, os.Stdout, os.Stderr, nil, attachOptions)
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
 }
 
 func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
@@ -116,8 +122,14 @@ func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
 	return spec
 }
 
-func CmdExecute(socket string, verbose bool, keep bool, args []string) {
+func CmdExecuteStart(socket string, verbose bool, keep bool, args []string) {
 	var container_name string = args[0]
 	var runCmd []string = args[1:]
-	Start(socket, config.LoadConfig(container_name), keep, verbose, runCmd)
+	Start(socket, config.LoadConfig(container_name), false, keep, verbose, runCmd)
+}
+
+func CmdExecuteRun(socket string, verbose bool, keep bool, args []string) {
+	var container_name string = args[0]
+	var runCmd []string = args[1:]
+	Start(socket, config.LoadConfig(container_name), true, keep, verbose, runCmd)
 }

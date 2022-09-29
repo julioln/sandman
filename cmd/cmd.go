@@ -42,13 +42,24 @@ var (
 	}
 
 	runCmd = &cobra.Command{
-		Use:     "start [container_image]",
-		Short:   "Start a sandboxed container",
-		Long:    "Start a sandboxed container",
-		Aliases: []string{"spawn", "s", "run", "r"},
+		Use:     "run [container_image]",
+		Short:   "Starts an attached sandboxed container",
+		Long:    "Starts an attached sandboxed container",
+		Aliases: []string{"r"},
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			run.CmdExecute(Socket, Verbose, Keep, args)
+			run.CmdExecuteRun(Socket, Verbose, Keep, args)
+		},
+	}
+
+	startCmd = &cobra.Command{
+		Use:     "start [container_image]",
+		Short:   "Start a detached sandboxed container",
+		Long:    "Start a detached sandboxed container",
+		Aliases: []string{"s"},
+		Args:    cobra.MinimumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			run.CmdExecuteStart(Socket, Verbose, Keep, args)
 		},
 	}
 
@@ -80,10 +91,13 @@ func init() {
 	rootCmd.AddCommand(buildCmd)
 	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(scaffoldCmd)
+	rootCmd.AddCommand(startCmd)
 	rootCmd.AddCommand(testCmd)
 
 	rootCmd.PersistentFlags().BoolVarP(&Verbose, "verbose", "v", false, "Verbose mode (log debug). Defaults to false")
 	rootCmd.PersistentFlags().StringVarP(&Socket, "socket", "", "", fmt.Sprintf("Specify podman socket. Defaults to %s", podman.DefaultSocket()))
-	runCmd.Flags().BoolVarP(&Keep, "keep", "k", false, "Keep container after exit (omit --rm)")
+
 	buildCmd.Flags().BoolVarP(&Layers, "layers", "l", false, "Use layers for building (default docker behavior)")
+	runCmd.Flags().BoolVarP(&Keep, "keep", "k", false, "Keep container after exit (omit --rm)")
+	startCmd.Flags().BoolVarP(&Keep, "keep", "k", false, "Keep container after exit (omit --rm)")
 }
