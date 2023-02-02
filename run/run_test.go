@@ -300,7 +300,7 @@ func TestNetwork(t *testing.T) {
 	testConfig.Run.Net = false
 	testConfig.Run.Network = "host"
 	spec = CreateSpec(*testConfig)
-	ns, _, _, _ = specgen.ParseNetworkFlag([]string{"host"})
+	ns, _, _, _ = specgen.ParseNetworkFlag([]string{"host"}, true)
 	if spec.NetNS.NSMode != ns.NSMode {
 		t.Errorf("Network namespace incorrect, expected %#v, got %#v", ns.NSMode, spec.NetNS.NSMode)
 	}
@@ -365,7 +365,8 @@ func TestWayland(t *testing.T) {
 	spec := CreateSpec(*testConfig)
 
 	vars := map[string]string{
-		"WAYLAND_DISPLAY": os.Getenv("WAYLAND_DISPLAY"),
+		"XDG_SESSION_TYPE": os.Getenv("XDG_SESSION_TYPE"),
+		"WAYLAND_DISPLAY":  os.Getenv("WAYLAND_DISPLAY"),
 	}
 	testMaps(t, spec.Env, vars)
 
@@ -385,9 +386,10 @@ func TestX11(t *testing.T) {
 	spec := CreateSpec(*testConfig)
 
 	vars := map[string]string{
-		"DISPLAY":       os.Getenv("DISPLAY"),
-		"XCURSOR_THEME": os.Getenv("XCURSOR_THEME"),
-		"XCURSOR_SIZE":  os.Getenv("XCURSOR_SIZE"),
+		"XDG_SESSION_TYPE": os.Getenv("XDG_SESSION_TYPE"),
+		"DISPLAY":          os.Getenv("DISPLAY"),
+		"XCURSOR_THEME":    os.Getenv("XCURSOR_THEME"),
+		"XCURSOR_SIZE":     os.Getenv("XCURSOR_SIZE"),
 	}
 	testMaps(t, spec.Env, vars)
 

@@ -7,6 +7,9 @@ mod:
 test:
 	go test -race -v ./...
 
+test_all:
+	go test all
+
 install:
 	go install
 

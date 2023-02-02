@@ -68,33 +68,29 @@ func Start(socket string, containerConfig config.ContainerConfig, attach bool, k
 		fmt.Printf("Container: %#v\n", container)
 	}
 
-	err = containers.Start(conn, container.ID, nil)
-	if err != nil {
+	if err = containers.Start(conn, container.ID, nil); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 
 	var waitOptions containers.WaitOptions
 	waitOptions.Condition = append(waitOptions.Condition, define.ContainerStateRunning)
-	_, err = containers.Wait(conn, container.ID, &waitOptions)
-	if err != nil {
+	if _, err = containers.Wait(conn, container.ID, &waitOptions); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 
 	if verbose {
 		var inspectOptions containers.InspectOptions
-		containerData, err := containers.Inspect(conn, container.ID, &inspectOptions)
-		if err == nil {
+		if containerData, err := containers.Inspect(conn, container.ID, &inspectOptions); err == nil {
 			fmt.Printf("Container data: %#v\n", containerData)
 		}
 	}
 
 	if attach {
 		attachOptions := new(containers.AttachOptions)
-		err = containers.Attach(conn, container.ID, os.Stdin, os.Stdout, os.Stderr, nil, attachOptions)
-		if err != nil {
-			fmt.Println(err)
+		if err = containers.Attach(conn, container.ID, os.Stdin, os.Stdout, os.Stderr, nil, attachOptions); err != nil {
+			fmt.Println("Failed to attach to container: ", err)
 		}
 	}
 }

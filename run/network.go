@@ -17,7 +17,7 @@ func Network(spec *specgen.SpecGenerator, containerConfig config.ContainerConfig
 		networkNS.NSMode = specgen.Slirp
 	} else {
 		var err error
-		if networkNS, _, _, err = specgen.ParseNetworkFlag([]string{containerConfig.Run.Network}); err != nil {
+		if networkNS, _, _, err = specgen.ParseNetworkFlag([]string{containerConfig.Run.Network}, true); err != nil {
 			fmt.Println("Error parsing network, defaulting to none: ", err)
 			networkNS.NSMode = specgen.None
 		}
