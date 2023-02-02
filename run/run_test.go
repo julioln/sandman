@@ -300,7 +300,7 @@ func TestNetwork(t *testing.T) {
 	testConfig.Run.Net = false
 	testConfig.Run.Network = "host"
 	spec = CreateSpec(*testConfig)
-	ns, _, _, _ = specgen.ParseNetworkFlag([]string{"host"}, true)
+	ns, _, _, _ = specgen.ParseNetworkFlag([]string{"host"}, false)
 	if spec.NetNS.NSMode != ns.NSMode {
 		t.Errorf("Network namespace incorrect, expected %#v, got %#v", ns.NSMode, spec.NetNS.NSMode)
 	}
