@@ -54,6 +54,7 @@ type ContainerConfigRun struct {
 type ContainerConfigRunLimits struct {
 	CPU        specs.LinuxCPU
 	Memory     specs.LinuxMemory
+	Pids       specs.LinuxPids
 	Rlimits    []specs.POSIXRlimit
 	CgroupConf map[string]string
 }
