@@ -86,12 +86,14 @@ func GetHomeStorageDir() string {
 	return fmt.Sprintf("%s/%s", getHomeDir(), constants.SANDMAN_LOCAL_STORAGE)
 }
 
+func GetSandmanConfigDir() string {
+	return fmt.Sprintf("%s/%s", getHomeDir(), constants.SANDMAN_DIR)
+}
+
 func LoadConfig(container_name string) ContainerConfig {
 	var config ContainerConfig
 	var config_file_content []byte
-
-	var homedir string = getHomeDir()
-	var config_file_path string = fmt.Sprintf("%s/%s/%s.toml", homedir, constants.SANDMAN_DIR, container_name)
+	var config_file_path string = fmt.Sprintf("%s/%s.toml", GetSandmanConfigDir(), container_name)
 
 	config_file_content, err := ioutil.ReadFile(config_file_path)
 

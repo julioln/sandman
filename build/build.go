@@ -46,7 +46,11 @@ func Build(socket string, containerConfig config.ContainerConfig, layers bool, v
 	// Image paramenters
 	options.Layers = layers
 	options.Output = containerConfig.ImageName
-	options.ContextDirectory = containerConfig.Build.ContextDirectory
+	if containerConfig.Build.ContextDirectory == "" {
+		options.ContextDirectory = config.GetSandmanConfigDir()
+	} else {
+		options.ContextDirectory = containerConfig.Build.ContextDirectory
+	}
 	options.AdditionalTags = append(options.AdditionalTags, containerConfig.Build.AdditionalImageNames...)
 	options.Labels = append(options.Labels,
 		fmt.Sprintf("sandman_version=%s", constants.VERSION),
