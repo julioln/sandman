@@ -109,6 +109,7 @@ func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
 	spec.Labels["sandman_container_name"] = containerConfig.Name
 	spec.Labels["sandman_image_name"] = containerConfig.ImageName
 	spec.Labels["sandman_version"] = constants.VERSION
+	spec.CgroupParent = "app.slice"
 
 	// Apply all configurators
 	for _, f := range configFunctions {
