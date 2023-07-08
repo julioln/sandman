@@ -78,7 +78,17 @@ var (
 		Short: "Tests the connection to the socket",
 		Long:  "Tests the connection to the socket",
 		Run: func(cmd *cobra.Command, args []string) {
+			config.CheckConfig()
 			podman.TestConnection(Socket)
+		},
+	}
+
+	setupCmd = &cobra.Command{
+		Use:   "setup",
+		Short: "Creates Sandman directories and configuration files",
+		Long:  "Creates Sandman directories and configuration files",
+		Run: func(cmd *cobra.Command, args []string) {
+			config.Setup()
 		},
 	}
 )
@@ -93,6 +103,7 @@ func init() {
 	rootCmd.AddCommand(scaffoldCmd)
 	rootCmd.AddCommand(startCmd)
 	rootCmd.AddCommand(testCmd)
+	rootCmd.AddCommand(setupCmd)
 
 	rootCmd.PersistentFlags().BoolVarP(&Verbose, "verbose", "v", false, "Verbose mode (log debug). Defaults to false")
 	rootCmd.PersistentFlags().StringVarP(&Socket, "socket", "", "", fmt.Sprintf("Specify podman socket. Defaults to %s", podman.DefaultSocket()))

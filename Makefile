@@ -24,6 +24,6 @@ upgrade: mod
 	go get -u ./...
 	go get -t -u ./...
 
-dev: lint mod compile
+dev: mod lint compile
 
 all: mod test compile install

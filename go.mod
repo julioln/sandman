@@ -3,6 +3,7 @@ module github.com/julioln/sandman
 go 1.18
 
 require (
+	dario.cat/mergo v1.0.0
 	github.com/BurntSushi/toml v1.2.1
 	github.com/citilinkru/libudev v1.0.0
 	github.com/containers/buildah v1.30.0

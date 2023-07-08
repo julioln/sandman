@@ -61,6 +61,7 @@ func Build(socket string, containerConfig config.ContainerConfig, layers bool, v
 	// Set building parameters
 	commonBuildOptions.Ulimit = containerConfig.Build.Limits.Ulimit
 	options.CommonBuildOpts = &commonBuildOptions
+	options.Compression = containerConfig.Build.Compression
 
 	if verbose {
 		fmt.Printf("Build Options: %#v\n", options)
