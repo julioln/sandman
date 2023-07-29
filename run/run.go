@@ -102,6 +102,7 @@ func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
 	spec.Terminal = true
 	spec.Stdin = true
 	spec.Remove = true
+	spec.Privileged = containerConfig.Run.Priviledged
 	spec.Hostname = strings.Replace(containerConfig.ImageName, "/", "_", -1)
 	spec.Umask = "0022"
 	spec.Env = make(map[string]string)

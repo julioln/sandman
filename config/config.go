@@ -45,6 +45,7 @@ type ContainerConfigRun struct {
 	Network      string
 	Name         string
 	CgroupParent string
+	Priviledged  bool
 	Volumes      []string
 	Env          []string
 	Devices      []string
