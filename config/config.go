@@ -45,7 +45,6 @@ type ContainerConfigRun struct {
 	Network      string
 	Name         string
 	CgroupParent string
-	Priviledged  bool
 	Volumes      []string
 	Env          []string
 	Devices      []string
@@ -55,6 +54,13 @@ type ContainerConfigRun struct {
 	RawPorts     []nettypes.PortMapping
 	RawDevices   []specs.LinuxDevice
 	Limits       ContainerConfigRunLimits
+	Permissions  ContainerConfigRunPermissions
+}
+
+type ContainerConfigRunPermissions struct {
+	Priviledged bool
+	CapAdd      []string
+	CapDrop     []string
 }
 
 type ContainerConfigRunLimits struct {

@@ -102,7 +102,6 @@ func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
 	spec.Terminal = true
 	spec.Stdin = true
 	spec.Remove = true
-	spec.Privileged = containerConfig.Run.Priviledged
 	spec.Hostname = strings.Replace(containerConfig.ImageName, "/", "_", -1)
 	spec.Umask = "0022"
 	spec.Env = make(map[string]string)
@@ -114,6 +113,11 @@ func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
 	if containerConfig.Run.CgroupParent != "" {
 		spec.CgroupParent = containerConfig.Run.CgroupParent
 	}
+
+	// Container permissions
+	spec.Privileged = containerConfig.Run.Permissions.Priviledged
+	spec.CapAdd = containerConfig.Run.Permissions.CapAdd
+	spec.CapDrop = containerConfig.Run.Permissions.CapDrop
 
 	// Apply all configurators
 	for _, f := range configFunctions {

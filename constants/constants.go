@@ -5,5 +5,5 @@ const (
 	SANDMAN_DIR           = ".config/sandman.d"
 	SANDMAN_CONF          = ".config/sandman.toml"
 	SANDMAN_LOCAL_STORAGE = ".local/share/sandman"
-	VERSION               = "2.2.1"
+	VERSION               = "2.2.2"
 )
