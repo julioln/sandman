@@ -15,6 +15,8 @@ install:
 
 clean:
 	go clean
+	go clean -cache
+	go clean -modcache
 
 lint:
 	go vet ./...
