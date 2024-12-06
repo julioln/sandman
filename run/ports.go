@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	nettypes "github.com/containers/common/libnetwork/types"
-	"github.com/containers/podman/v4/pkg/specgen"
+	"github.com/containers/podman/v5/pkg/specgen"
 	"github.com/julioln/sandman/config"
 )
 

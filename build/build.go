@@ -12,8 +12,8 @@ import (
 	"github.com/julioln/sandman/podman"
 
 	"github.com/containers/buildah/define"
-	"github.com/containers/podman/v4/pkg/bindings/images"
-	"github.com/containers/podman/v4/pkg/domain/entities"
+	"github.com/containers/podman/v5/pkg/bindings/images"
+	"github.com/containers/podman/v5/pkg/domain/entities"
 )
 
 func Build(socket string, containerConfig config.ContainerConfig, layers bool, verbose bool) {

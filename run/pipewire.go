@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/containers/podman/v4/pkg/specgen"
+	"github.com/containers/podman/v5/pkg/specgen"
 	"github.com/julioln/sandman/config"
 	specs "github.com/opencontainers/runtime-spec/specs-go"
 )

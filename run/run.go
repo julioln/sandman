@@ -10,9 +10,9 @@ import (
 	"github.com/julioln/sandman/constants"
 	"github.com/julioln/sandman/podman"
 
-	"github.com/containers/podman/v4/libpod/define"
-	"github.com/containers/podman/v4/pkg/bindings/containers"
-	"github.com/containers/podman/v4/pkg/specgen"
+	"github.com/containers/podman/v5/libpod/define"
+	"github.com/containers/podman/v5/pkg/bindings/containers"
+	"github.com/containers/podman/v5/pkg/specgen"
 )
 
 var (
@@ -43,10 +43,11 @@ func Start(socket string, containerConfig config.ContainerConfig, attach bool, k
 	var conn context.Context = podman.InitializePodman(socket)
 	var spec = CreateSpec(containerConfig)
 
+
 	// Check overrides
-	if keep {
-		spec.Remove = false
-	}
+	remove := !keep
+	spec.Remove = &remove
+
 	if len(runCmd) > 0 {
 		spec.Entrypoint = runCmd
 	}
@@ -97,11 +98,14 @@ func Start(socket string, containerConfig config.ContainerConfig, attach bool, k
 
 func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
 	spec := specgen.NewSpecGenerator(containerConfig.ImageName, false)
+	terminal := true
+	stdin := true
+	remove := true
 
 	// Default configuration
-	spec.Terminal = true
-	spec.Stdin = true
-	spec.Remove = true
+	spec.Terminal = &terminal
+	spec.Stdin = &stdin
+	spec.Remove = &remove
 	spec.Hostname = strings.Replace(containerConfig.ImageName, "/", "_", -1)
 	spec.Umask = "0022"
 	spec.Env = make(map[string]string)
@@ -115,7 +119,7 @@ func CreateSpec(containerConfig config.ContainerConfig) *specgen.SpecGenerator {
 	}
 
 	// Container permissions
-	spec.Privileged = containerConfig.Run.Permissions.Priviledged
+	spec.Privileged = &containerConfig.Run.Permissions.Priviledged
 	spec.CapAdd = containerConfig.Run.Permissions.CapAdd
 	spec.CapDrop = containerConfig.Run.Permissions.CapDrop
 

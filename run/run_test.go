@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	nettypes "github.com/containers/common/libnetwork/types"
-	"github.com/containers/podman/v4/pkg/specgen"
+	"github.com/containers/podman/v5/pkg/specgen"
 	"github.com/julioln/sandman/config"
 	"github.com/julioln/sandman/constants"
 	specs "github.com/opencontainers/runtime-spec/specs-go"
@@ -96,13 +96,13 @@ func TestCreateSpec(t *testing.T) {
 	}
 	testMaps(t, labels, spec.Labels)
 
-	if !spec.Terminal {
+	if !*spec.Terminal {
 		t.Errorf("terminal incorrect, expected true, got false")
 	}
-	if !spec.Stdin {
+	if !*spec.Stdin {
 		t.Errorf("stdin incorrect, expected true, got false")
 	}
-	if !spec.Remove {
+	if !*spec.Remove {
 		t.Errorf("remove incorrect, expected true, got false")
 	}
 	if spec.Umask != "0022" {
@@ -300,7 +300,7 @@ func TestNetwork(t *testing.T) {
 	testConfig.Run.Net = false
 	testConfig.Run.Network = "host"
 	spec = CreateSpec(*testConfig)
-	ns, _, _, _ = specgen.ParseNetworkFlag([]string{"host"}, false)
+	ns, _, _, _ = specgen.ParseNetworkFlag([]string{"host"})
 	if spec.NetNS.NSMode != ns.NSMode {
 		t.Errorf("Network namespace incorrect, expected %#v, got %#v", ns.NSMode, spec.NetNS.NSMode)
 	}
