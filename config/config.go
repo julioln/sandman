@@ -3,7 +3,6 @@ package config
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/user"
 
@@ -188,7 +187,7 @@ func LoadSandmanConfig() SandmanConfig {
 	var config_file_content []byte
 	var config_file_path string = GetSandmanConfigFilename()
 
-	config_file_content, err := ioutil.ReadFile(config_file_path)
+	config_file_content, err := os.ReadFile(config_file_path)
 
 	if err != nil {
 		fmt.Printf("Can't read sandman configuration file at %s", config_file_path)
@@ -212,7 +211,7 @@ func LoadContainerConfig(container_name string) ContainerConfig {
 	var config_file_content []byte
 	var config_file_path string = fmt.Sprintf("%s/%s.toml", GetSandmanConfigDir(), container_name)
 
-	config_file_content, err := ioutil.ReadFile(config_file_path)
+	config_file_content, err := os.ReadFile(config_file_path)
 
 	if err != nil {
 		fmt.Printf("Can't read container configuration file at %s", config_file_path)

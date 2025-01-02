@@ -3,7 +3,6 @@ package build
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -27,7 +26,7 @@ func Build(socket string, containerConfig config.ContainerConfig, layers bool, v
 	}
 
 	// Create temporary Dockerfile
-	dockerFile, err := ioutil.TempFile("", fmt.Sprintf("sandman_build_%s", strings.Replace(containerConfig.Name, "/", "_", -1)))
+	dockerFile, err := os.CreateTemp("", fmt.Sprintf("sandman_build_%s", strings.Replace(containerConfig.Name, "/", "_", -1)))
 	if err != nil {
 		fmt.Println("Failed to write to temp dockerfile")
 		fmt.Println("Error: ", err)
