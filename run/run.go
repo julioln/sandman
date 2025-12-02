@@ -10,9 +10,9 @@ import (
 	"github.com/julioln/sandman/constants"
 	"github.com/julioln/sandman/podman"
 
-	"github.com/containers/podman/v5/libpod/define"
-	"github.com/containers/podman/v5/pkg/bindings/containers"
-	"github.com/containers/podman/v5/pkg/specgen"
+	"github.com/containers/podman/v6/libpod/define"
+	"github.com/containers/podman/v6/pkg/bindings/containers"
+	"github.com/containers/podman/v6/pkg/specgen"
 )
 
 var (
@@ -42,7 +42,6 @@ var (
 func Start(socket string, containerConfig config.ContainerConfig, attach bool, keep bool, verbose bool, runCmd []string) {
 	var conn context.Context = podman.InitializePodman(socket)
 	var spec = CreateSpec(containerConfig)
-
 
 	// Check overrides
 	remove := !keep

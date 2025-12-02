@@ -6,11 +6,11 @@ import (
 	"reflect"
 	"testing"
 
-	nettypes "github.com/containers/common/libnetwork/types"
-	"github.com/containers/podman/v5/pkg/specgen"
+	"github.com/containers/podman/v6/pkg/specgen"
 	"github.com/julioln/sandman/config"
 	"github.com/julioln/sandman/constants"
 	specs "github.com/opencontainers/runtime-spec/specs-go"
+	"go.podman.io/common/libnetwork/types"
 )
 
 func compareMountPoints(m1 specs.Mount, m2 specs.Mount) bool {
@@ -21,7 +21,7 @@ func compareDevices(d1 specs.LinuxDevice, d2 specs.LinuxDevice) bool {
 	return reflect.DeepEqual(d1, d2)
 }
 
-func comparePorts(p1 nettypes.PortMapping, p2 nettypes.PortMapping) bool {
+func comparePorts(p1 types.PortMapping, p2 types.PortMapping) bool {
 	return reflect.DeepEqual(p1, p2)
 }
 
@@ -64,7 +64,7 @@ func testDevices(t *testing.T, spec *specgen.SpecGenerator, devices []specs.Linu
 	}
 }
 
-func testPorts(t *testing.T, spec *specgen.SpecGenerator, ports []nettypes.PortMapping) {
+func testPorts(t *testing.T, spec *specgen.SpecGenerator, ports []types.PortMapping) {
 	for _, expected_port := range ports {
 		found := false
 		for _, existing_port := range spec.PortMappings {
@@ -242,7 +242,7 @@ func TestPorts(t *testing.T) {
 	testConfig := new(config.ContainerConfig)
 	testConfig.Run.Ports = []string{"3000:4000", "invalid"}
 	spec := CreateSpec(*testConfig)
-	ports := []nettypes.PortMapping{
+	ports := []types.PortMapping{
 		{
 			ContainerPort: 3000,
 			HostPort:      4000,

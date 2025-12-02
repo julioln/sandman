@@ -7,7 +7,7 @@ import (
 	"github.com/citilinkru/libudev"
 	"github.com/citilinkru/libudev/matcher"
 	"github.com/citilinkru/libudev/types"
-	"github.com/containers/podman/v5/pkg/specgen"
+	"github.com/containers/podman/v6/pkg/specgen"
 	"github.com/julioln/sandman/config"
 	specs "github.com/opencontainers/runtime-spec/specs-go"
 )

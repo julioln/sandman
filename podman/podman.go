@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/containers/podman/v5/pkg/bindings"
+	"github.com/containers/podman/v6/pkg/bindings"
 )
 
 func DefaultSocket() string {

@@ -3,7 +3,7 @@ package run
 import (
 	"fmt"
 
-	"github.com/containers/podman/v5/pkg/specgen"
+	"github.com/containers/podman/v6/pkg/specgen"
 	"github.com/julioln/sandman/config"
 )
 

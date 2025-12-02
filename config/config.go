@@ -10,9 +10,9 @@ import (
 
 	"dario.cat/mergo"
 	"github.com/BurntSushi/toml"
-	nettypes "github.com/containers/common/libnetwork/types"
-	"github.com/containers/storage/pkg/archive"
 	specs "github.com/opencontainers/runtime-spec/specs-go"
+	nettypes "go.podman.io/common/libnetwork/types"
+	"go.podman.io/storage/pkg/archive"
 )
 
 type ContainerConfigBuild struct {

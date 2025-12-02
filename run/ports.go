@@ -5,9 +5,9 @@ import (
 	"strconv"
 	"strings"
 
-	nettypes "github.com/containers/common/libnetwork/types"
-	"github.com/containers/podman/v5/pkg/specgen"
+	"github.com/containers/podman/v6/pkg/specgen"
 	"github.com/julioln/sandman/config"
+	"go.podman.io/common/libnetwork/types"
 )
 
 func Ports(spec *specgen.SpecGenerator, containerConfig config.ContainerConfig) {
@@ -21,7 +21,7 @@ func Ports(spec *specgen.SpecGenerator, containerConfig config.ContainerConfig) 
 		containerPort, _ := strconv.Atoi(p[0])
 		hostPort, _ := strconv.Atoi(p[1])
 
-		spec.PortMappings = append(spec.PortMappings, nettypes.PortMapping{
+		spec.PortMappings = append(spec.PortMappings, types.PortMapping{
 			ContainerPort: uint16(containerPort),
 			HostPort:      uint16(hostPort),
 		})

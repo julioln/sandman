@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/containers/podman/v5/pkg/specgen"
-	"github.com/containers/storage/pkg/idtools"
-	"github.com/containers/storage/types"
+	"github.com/containers/podman/v6/pkg/specgen"
 	"github.com/julioln/sandman/config"
+	"go.podman.io/storage/pkg/idtools"
+	"go.podman.io/storage/types"
 )
 
 func Uidmap(spec *specgen.SpecGenerator, containerConfig config.ContainerConfig) {
